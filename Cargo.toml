@@ -1,1 +1,2 @@
--e '[workspace]\nmembers = ["server", "frontend"]' 
+[workspace]
+members = ["server", "frontend"]

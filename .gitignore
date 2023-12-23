@@ -1,1 +1,2 @@
--e "target/\ndist/" 
+target/
+dist/
