@@ -16,7 +16,7 @@ Hello, {{ name }}!
 <h1>Songs</h1>
 <ul>
     {% for song in songs %}
-    <li><a href="/songs/{{ song.id }}">{{song.author}} - {{song.title}}</a></li>
+    <li><a href="/songs/{{ song.id() }}">{{ song.author() }} - {{ song.title() }}</a></li>
     {% endfor %}
 </ul>
 
