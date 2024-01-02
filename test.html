@@ -1,0 +1,65 @@
+<script type="module" src="dist/chorddb.js"></script>
+
+
+Tab should go here:
+
+<div id="tab"></div>
+
+End.
+
+Test
+
+<pre class="tab">
+A  B         C
+Some lyric line
+</pre>
+
+<style>
+
+.tab {
+    background-color: #eee;
+    font-size: x-large;
+}
+
+.tab .chord {
+    color: red;
+    font-weight: bold;
+}
+
+.tab .fingering {
+    color: blue;
+}
+
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        buildLines("tab", [
+            {
+                type: "chord",
+                text: "A B C",
+                chords: [
+                    {
+                        chord: "A",
+                        fingering: "002220",
+                        position: 0,
+                    },
+                    {
+                        chord: "B",
+                        fingering: "224442",
+                        position: 2,
+                    },
+                    {
+                        chord: "C",
+                        fingering: "032010",
+                        position: 13,
+                    }
+                ]
+            },
+            {
+                type: "text",
+                text: "Some lyric line",
+            },
+        ])
+
+    });
+</script>

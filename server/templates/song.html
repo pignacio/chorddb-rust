@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ song.author }} - {{ song.title }}</h1>
+
+<pre class="tab" style="font-size: x-large">
+{{ song.contents }}
+</pre>
+
+{% endblock %}
