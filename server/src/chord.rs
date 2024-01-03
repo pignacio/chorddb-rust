@@ -192,8 +192,7 @@ impl Display for Chord {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use super::ALL_KEYS;
+    use test_log::test;
 
     #[test]
     fn exploration() {
@@ -219,19 +218,24 @@ mod tests {
         }
     }
 
+    fn parse_chord(text: String) -> Option<Chord> {
+        let chord = Chord::parse(&text);
+        log::info!("Parsed '{}' into {:?}", &text, chord);
+        return chord;
+    }
+
     #[test]
     fn validate_all_chords_parse() {
-        println!("RUST_LOG={:?}", std::env::var("RUST_LOG"));
         for root in &ALL_KEYS {
             for variant in &ALL_VARIANTS {
-                let chord = Chord::parse(format!("{}{}", root.text(), variant.text())).unwrap();
+                let chord = parse_chord(format!("{}{}", root.text(), variant.text())).unwrap();
                 assert_eq!(&chord.root, root);
                 assert_eq!(&chord.variant, variant);
                 assert_eq!(&chord.bass, root);
 
                 for bass in &ALL_KEYS {
                     let chord =
-                        Chord::parse(format!("{}{}/{}", root.text(), variant.text(), bass.text()))
+                        parse_chord(format!("{}{}/{}", root.text(), variant.text(), bass.text()))
                             .unwrap();
                     assert_eq!(&chord.root, root);
                     assert_eq!(&chord.variant, variant);
