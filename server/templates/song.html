@@ -3,8 +3,48 @@
 {% block content %}
 <h1>{{ song.author() }} - {{ song.title() }}</h1>
 
+<style>
+    .tab {
+        background-color: #eee;
+        font-size: x-large;
+    }
+
+    .tab .chord {
+        color: red;
+        font-weight: bold;
+    }
+
+    .tab .fingering {
+        color: blue;
+    }
+</style>
 <pre class="tab" style="font-size: x-large">
 {{ song.contents() }}
 </pre>
 
+
+Auto:
+<div id="tab" style="font-size: x-large"></div>
+<style>
+    .tab {
+        background-color: #eee;
+        font-size: x-large;
+    }
+
+    .tab .chord {
+        color: red;
+        font-weight: bold;
+    }
+
+    .tab .fingering {
+        color: blue;
+    }
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let tab = {{ tab| safe
+    }};
+    buildLines("tab", tab);
+    })
+</script>
 {% endblock %}

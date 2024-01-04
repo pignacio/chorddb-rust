@@ -1,6 +1,6 @@
 import { type RenderBit, renderInSingleLine, createSpan } from "./render"
 
-enum LineType {
+enum BitType {
     Text = "text",
     Chord = "chord",
 }
@@ -8,16 +8,18 @@ enum LineType {
 interface Chord {
     chord: string,
     fingering: string,
-    position: number
 }
 
-interface Line {
-    type: LineType,
+interface LineBit {
+    type: BitType,
+    position: number,
     text: string,
-    chords?: Chord[]
+    chord: Chord | undefined,
+
+
 }
 
-function buildLines(contentId: string, lines: Line[]) {
+function buildLines(contentId: string, lines: LineBit[][]) {
     console.log("Building lines into #" + contentId);
     console.log(lines);
     let content = document.getElementById(contentId);
@@ -32,47 +34,41 @@ function buildLines(contentId: string, lines: Line[]) {
             pre.appendChild(html)
             pre.innerHTML += "\n"
         })
-        
+
     }
 
     content?.appendChild(pre)
 }
 
-function buildLine(line: Line): HTMLElement[] {
-    switch (line.type) {
-        case LineType.Text:
-            return [buildLyricLine(line.text)]
-        case LineType.Chord:
-            return buildChordLine(line)
+function getBitSize(bit: LineBit) {
+    if (bit.type == BitType.Chord) {
+        let chord = bit.chord;
+        if (chord == undefined) {
+            console.log("Found a chord bit without chord!", bit);
+            return bit.text.length;
+        }
+        return chord.chord.length + chord.fingering.length + 2;
     }
-    console.error("Invalid line type:" + line.type)
+    return bit.text.length;
 }
 
-function buildLyricLine(text: string) {
-    return createSpan("lyric", text)
-}
+function buildLine(line: LineBit[]): HTMLElement[] {
+    console.log("Building line", line)
 
-function buildChordLine(line: Line): HTMLElement[] {
-    console.log("Building chord line", line)
-    if (line.chords == undefined) {
-        console.error("Attempted to build a chord line without chords: " + line);
-        return [buildLyricLine(line.text)];
-    }
-
-    let chords = [...line.chords]
-    chords.sort((a, b) => b.position - a.position)
+    let bits = [...line]
+    bits.sort((a, b) => b.position - a.position)
 
     let lines: RenderBit[][] = [[]]
     let lastPosition: number | undefined = undefined
     let lastLineIndex: number = 0;
 
-    for (let chord of chords) {
+    for (let linebit of bits) {
         let currentLine: RenderBit[]
         if (lastPosition == undefined) {
             lastLineIndex = 0;
         } else {
-            let lastChordPosition = chord.position + chord.chord.length + chord.fingering.length + 2
-            if (lastChordPosition > lastPosition) {
+            let lastBitPosition = linebit.position + getBitSize(linebit)
+            if (lastBitPosition > lastPosition) {
                 // Overlap
                 lastLineIndex++
                 while (lines.length <= lastLineIndex) {
@@ -80,8 +76,8 @@ function buildChordLine(line: Line): HTMLElement[] {
                 }
                 for (let i = 0; i < lastLineIndex; i++) {
                     lines[i].push({
-                        html: createSpan("chord", "|"),
-                        position: chord.position,
+                        html: createSpan(linebit.type == BitType.Chord ? "chord" : "lyric", "|"),
+                        position: linebit.position,
                         size: 1,
                     })
                 }
@@ -90,19 +86,29 @@ function buildChordLine(line: Line): HTMLElement[] {
             }
         }
         currentLine = lines[lastLineIndex]
-            
-        lastPosition = chord.position;
 
-        currentLine.push({
-            html: createSpan("chord", chord.chord),
-            position: chord.position,
-            size: chord.chord.length,
-        })
-        currentLine.push({
-            html: createSpan("fingering", "(" + chord.fingering + ")"),
-            position: chord.position + chord.chord.length,
-            size: chord.fingering.length + 2,
-        })
+        lastPosition = linebit.position;
+
+        let chord = linebit.chord;
+        if (chord != undefined) {
+            currentLine.push({
+                html: createSpan("chord", chord.chord),
+                position: linebit.position,
+                size: chord.chord.length,
+            })
+            currentLine.push({
+                html: createSpan("fingering", "(" + chord.fingering + ")"),
+                position: linebit.position + chord.chord.length,
+                size: chord.fingering.length + 2,
+            })
+        } else {
+            currentLine.push({
+                html: createSpan("lyric", linebit.text),
+                position: linebit.position,
+                size: linebit.text.length,
+            })
+        }
+
     }
 
     lines.reverse()

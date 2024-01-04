@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
+extern crate serde;
+
 
 use clap::Parser;
 use std::sync::Arc;
@@ -8,6 +10,7 @@ use web::AppState;
 use crate::song::FileSongs;
 
 mod chord;
+mod parser;
 mod song;
 mod web;
 

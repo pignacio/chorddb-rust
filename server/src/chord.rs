@@ -4,7 +4,7 @@ use itertools::Itertools;
 use regex::Regex;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Key {
+pub enum Key {
     A,
     Bb,
     B,
@@ -104,13 +104,13 @@ impl Key {
     }
 }
 
-struct Note {
+pub struct Note {
     key: Key,
     octave: i8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Variant {
+pub enum Variant {
     Major,
     Minor,
     Seventh,
@@ -149,13 +149,21 @@ lazy_static! {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Chord {
+pub struct Chord {
     root: Key,
     variant: Variant,
     bass: Key,
 }
 
 impl Chord {
+    pub fn simple(root: Key, variant: Variant) -> Self {
+        Chord::new(root, variant, root)
+    }
+
+    pub fn new(root: Key, variant: Variant, bass: Key) -> Self {
+        Chord{ root, variant, bass}
+    }
+
     pub fn text(&self) -> String {
         let bass = if self.root == self.bass {
             "".to_owned()
@@ -166,7 +174,7 @@ impl Chord {
     }
 
     pub fn parse<S: AsRef<str>>(source: S) -> Option<Chord> {
-        log::info!("Parsing chord '{}'", source.as_ref());
+        log::trace!("Parsing chord '{}'", source.as_ref());
         let Some(caps) = CHORD_REGEX.captures(source.as_ref()) else {
             return None;
         };
