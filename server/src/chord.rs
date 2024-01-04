@@ -161,7 +161,11 @@ impl Chord {
     }
 
     pub fn new(root: Key, variant: Variant, bass: Key) -> Self {
-        Chord{ root, variant, bass}
+        Chord {
+            root,
+            variant,
+            bass,
+        }
     }
 
     pub fn text(&self) -> String {

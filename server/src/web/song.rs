@@ -72,7 +72,6 @@ pub async fn song(
             .ok()
             .and_then(|song_id| songs.get_song(&song_id))
             .map(|song| {
-                dbg!(test(&song));
                 SongTemplate {
                     song: song.clone(),
                     tab: test(&song),
