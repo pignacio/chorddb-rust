@@ -18,13 +18,14 @@
         color: blue;
     }
 </style>
-<pre class="tab" style="font-size: x-large">
-{{ song.contents() }}
-</pre>
 
 
 Auto:
 <div id="tab" style="font-size: x-large"></div>
+
+Original:
+<pre class="tab" style="font-size: x-large">{{ song.contents() }}</pre>
+
 <style>
     .tab {
         background-color: #eee;
@@ -42,9 +43,8 @@ Auto:
 </style>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        let tab = {{ tab| safe
-    }};
-    buildLines("tab", tab);
+        let tab = {{ tab| safe }};
+        buildLines("tab", tab);
     })
 </script>
 {% endblock %}

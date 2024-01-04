@@ -20,8 +20,6 @@ interface LineBit {
 }
 
 function buildLines(contentId: string, lines: LineBit[][]) {
-    console.log("Building lines into #" + contentId);
-    console.log(lines);
     let content = document.getElementById(contentId);
     if (content == undefined) {
         console.error("Could not find element with id " + contentId);
@@ -44,7 +42,7 @@ function getBitSize(bit: LineBit) {
     if (bit.type == BitType.Chord) {
         let chord = bit.chord;
         if (chord == undefined) {
-            console.log("Found a chord bit without chord!", bit);
+            console.error("Found a chord bit without chord!", bit);
             return bit.text.length;
         }
         return chord.chord.length + chord.fingering.length + 2;
@@ -52,57 +50,57 @@ function getBitSize(bit: LineBit) {
     return bit.text.length;
 }
 
-function buildLine(line: LineBit[]): HTMLElement[] {
-    console.log("Building line", line)
+class RenderLine {
+    bits: RenderBit[] = [];
+    lastPosition: number = Number.MAX_SAFE_INTEGER;
 
+    addBit(bit: RenderBit) {
+        this.bits.push(bit)
+        this.lastPosition = this.lastPosition == undefined ? bit.position : Math.min(this.lastPosition, bit.position)
+    }
+}
+
+function buildLine(line: LineBit[]): HTMLElement[] {
     let bits = [...line]
     bits.sort((a, b) => b.position - a.position)
 
-    let lines: RenderBit[][] = [[]]
-    let lastPosition: number | undefined = undefined
-    let lastLineIndex: number = 0;
-
+    let lines: RenderLine[] = [new RenderLine()]
+    
     for (let linebit of bits) {
-        let currentLine: RenderBit[]
-        if (lastPosition == undefined) {
-            lastLineIndex = 0;
-        } else {
-            let lastBitPosition = linebit.position + getBitSize(linebit)
-            if (lastBitPosition > lastPosition) {
-                // Overlap
-                lastLineIndex++
-                while (lines.length <= lastLineIndex) {
-                    lines.push([])
-                }
-                for (let i = 0; i < lastLineIndex; i++) {
-                    lines[i].push({
-                        html: createSpan(linebit.type == BitType.Chord ? "chord" : "lyric", "|"),
-                        position: linebit.position,
-                        size: 1,
-                    })
-                }
-            } else {
-                lastLineIndex = 0;
+        let lineIndex : number = 0;
+        let lastBitPosition = linebit.position + getBitSize(linebit)
+        while (lastBitPosition > lines[lineIndex].lastPosition) {
+            lineIndex++;
+            while (lines.length <= lineIndex) {
+                lines.push(new RenderLine())
             }
         }
-        currentLine = lines[lastLineIndex]
 
-        lastPosition = linebit.position;
+        // Render arrow
+        for (let i = 0; i < lineIndex; i++) {
+            lines[i].addBit({
+                html: createSpan(linebit.type == BitType.Chord ? "chord" : "lyric", i == 0 ? "v" : "|"),
+                position: linebit.position,
+                size: 1,
+            })
+        }
 
+        // Render actual bit
+        let currentLine = lines[lineIndex]
         let chord = linebit.chord;
         if (chord != undefined) {
-            currentLine.push({
+            currentLine.addBit({
                 html: createSpan("chord", chord.chord),
                 position: linebit.position,
                 size: chord.chord.length,
             })
-            currentLine.push({
+            currentLine.addBit({
                 html: createSpan("fingering", "(" + chord.fingering + ")"),
                 position: linebit.position + chord.chord.length,
                 size: chord.fingering.length + 2,
             })
         } else {
-            currentLine.push({
+            currentLine.addBit({
                 html: createSpan("lyric", linebit.text),
                 position: linebit.position,
                 size: linebit.text.length,
@@ -112,9 +110,7 @@ function buildLine(line: LineBit[]): HTMLElement[] {
     }
 
     lines.reverse()
-    console.log("Lines:", lines)
-    let res = lines.map(line => renderInSingleLine(line))
-    console.log("Result:", res)
+    let res = lines.map(line => renderInSingleLine(line.bits))
     return res
 }
 

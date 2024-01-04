@@ -6,7 +6,6 @@ export interface RenderBit {
 
 
 export function renderInSingleLine(bits: RenderBit[]): HTMLElement {
-    console.log("Rendering bits: ", bits)
     let html = createSpan("line")
     bits.sort((a, b) => a.position - b.position)
 
