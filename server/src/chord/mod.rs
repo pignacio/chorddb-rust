@@ -304,7 +304,7 @@ mod tests {
 
     fn parse_chord(text: String) -> Option<Chord> {
         let chord = Chord::parse(&text);
-        log::info!("Parsed '{}' into {:?}", &text, chord);
+        log::trace!("Parsed '{}' into {:?}", &text, chord);
         return chord;
     }
 

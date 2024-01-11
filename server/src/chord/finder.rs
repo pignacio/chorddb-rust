@@ -2,6 +2,7 @@ use std::alloc::System;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::time::Duration;
 use std::time::SystemTime;
 
 use itertools::Itertools;
@@ -92,11 +93,12 @@ impl Debug for Fingering {
 
 struct BacktrackState {
     placements: Vec<Option<usize>>,
+    candidates: Vec<Vec<usize>>,
     steps: i64,
-    checks: i64,
+    checks: Vec<u128>,
 }
 
-const MAX_DISPLACEMENT: usize = 5;
+const MAX_DISPLACEMENT: usize = 4;
 
 fn is_in_range(current: &Vec<Option<usize>>, fret: &usize) -> bool {
     let used_frets: Vec<usize> = current
@@ -115,15 +117,25 @@ fn is_in_range(current: &Vec<Option<usize>>, fret: &usize) -> bool {
     let min = used_frets.first().unwrap();
     let max = used_frets.last().unwrap();
 
-    return *fret == 0 || ((*max < MAX_DISPLACEMENT || *fret > max - MAX_DISPLACEMENT) && *fret < min + MAX_DISPLACEMENT);
+    return *fret == 0 || ((*max <= MAX_DISPLACEMENT || *fret >= max - MAX_DISPLACEMENT) && *fret <= min + MAX_DISPLACEMENT);
 }
 
 pub fn find_fingerings(chord: &Chord, instrument: &'static StringInstrument) -> Vec<Fingering> {
     let start = SystemTime::now();
+    let chord_keys = chord.keys();
+    let candidates: Vec<Vec<usize>> = instrument.strings.iter().map(|string| {
+        (0..string.frets)
+            .filter(|f| chord_keys.contains(&(string.note + *f as i32).key()))
+            .collect()
+    })
+            .collect();
+    
+
     let mut state = BacktrackState {
         placements: vec![],
+        candidates,
         steps: 0,
-        checks: 0,
+        checks: vec![],
     };
     let mut fingerings: Vec<Fingering> = vec![];
 
@@ -135,9 +147,11 @@ pub fn find_fingerings(chord: &Chord, instrument: &'static StringInstrument) -> 
         chord,
         instrument,
         state.steps,
-        state.checks,
+        state.checks.len(),
         start.elapsed().unwrap().as_millis(),
     );
+
+    log::debug!("Average check duration: {}ns", state.checks.iter().sum::<u128>() / state.checks.len() as u128);
 
     fingerings
 }
@@ -149,20 +163,19 @@ fn finder_backtrack(
     state: &mut BacktrackState,
 ) {
     if state.placements.len() >= instrument.strings.len() {
-        state.checks += 1;
+        let start = SystemTime::now();
         if is_valid_fingering(chord, instrument, &state.placements) {
             found_fingerings.push(Fingering {
                 instrument,
                 placements: state.placements.clone(),
             })
         }
+        state.checks.push(start.elapsed().unwrap().as_nanos())
     } else {
-        let chord_keys = chord.keys();
-        let next_string = &instrument.strings[state.placements.len()];
         backtrap_step(chord, instrument, found_fingerings, state, None);
-        let candidates: Vec<usize> = (0..next_string.frets)
+        let candidates: Vec<usize> = state.candidates[state.placements.len()].iter()
             .filter(|f| is_in_range(&state.placements, f))
-            .filter(|f| chord_keys.contains(&(next_string.note + *f as i32).key()))
+            .copied()
             .collect();
 
         candidates
@@ -187,12 +200,12 @@ fn backtrap_step(
 fn is_valid_fingering(
     chord: &Chord,
     instrument: &StringInstrument,
-    state: &[Option<usize>],
+    placements: &[Option<usize>],
 ) -> bool {
     let notes: Vec<Note> = instrument
         .strings
         .iter()
-        .zip(state)
+        .zip(placements)
         .filter_map(|(string, fret)| fret.map(|f| string.note + f as i32))
         .sorted()
         .collect();
