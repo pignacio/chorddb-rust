@@ -232,21 +232,26 @@ mod tests {
 
     #[test]
     fn exploration() {
-        let start = SystemTime::now();
         let chord = &Chord::parse("A7").unwrap();
-        let fingerings = find_fingerings(&chord, &GUITAR_STANDARD);
+        let count = 10000;
+        let start = SystemTime::now();
+        (0..count).into_iter().for_each(|_| {
+            let fingerings = find_fingerings(&chord, &GUITAR_STANDARD);
+        });
+        let elapsed = start.elapsed().unwrap();
         println!(
-            "Found {} fingerings for {} in {:?} ms",
-            fingerings.len(),
+            "Processed {} fingerings for {} in {:?} ms ({} nanos/search)",
+            count,
             chord,
-            start.elapsed().map(|x| x.as_millis()).unwrap()
-        );
-        fingerings
-            .iter()
-            .filter(|f| f.placements[1] == Some(0))
-            .take(10)
-            .for_each(|f| {
-                dbg!(f);
-            });
+            elapsed.as_millis(),
+            elapsed.as_nanos() / count,
+            );
+        // fingerings
+        //     .iter()
+        //     .filter(|f| f.placements[1] == Some(0))
+        //     .take(10)
+        //     .for_each(|f| {
+        //         dbg!(f);
+        //     });
     }
 }
