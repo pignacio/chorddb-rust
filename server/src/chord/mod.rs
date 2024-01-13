@@ -5,7 +5,7 @@ use regex::Regex;
 
 pub mod finder;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Key {
     C,
     Db,
