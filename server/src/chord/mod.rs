@@ -22,7 +22,7 @@ pub enum Key {
 }
 
 // This must honor key == ALL_KEYS[key.ordinal()]
-const ALL_KEYS: [Key; 12] = [
+pub const ALL_KEYS: [Key; 12] = [
     Key::C,
     Key::Db,
     Key::D,
@@ -163,14 +163,14 @@ impl Ord for Note {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Variant {
     Major,
     Minor,
     Seventh,
 }
 
-const ALL_VARIANTS: [Variant; 3] = [Variant::Major, Variant::Minor, Variant::Seventh];
+pub const ALL_VARIANTS: [Variant; 3] = [Variant::Major, Variant::Minor, Variant::Seventh];
 
 lazy_static! {
     static ref VARIANTS_BY_TEXT: HashMap<&'static str, &'static Variant> =

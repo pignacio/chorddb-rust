@@ -59,17 +59,17 @@ lazy_static! {
     pub static ref GUITAR_STANDARD: StringInstrument = StringInstrument::with_bass(
         "Guitar, Standard Tuning",
         vec![
-            Corda::new(Note::new(Key::E, 2), 30),
-            Corda::new(Note::new(Key::A, 2), 30),
-            Corda::new(Note::new(Key::D, 3), 30),
-            Corda::new(Note::new(Key::G, 3), 30),
-            Corda::new(Note::new(Key::B, 3), 30),
-            Corda::new(Note::new(Key::E, 4), 30),
+            Corda::new(Note::new(Key::E, 2), 24),
+            Corda::new(Note::new(Key::A, 2), 24),
+            Corda::new(Note::new(Key::D, 3), 24),
+            Corda::new(Note::new(Key::G, 3), 24),
+            Corda::new(Note::new(Key::B, 3), 24),
+            Corda::new(Note::new(Key::E, 4), 24),
         ]
     );
 }
 
-struct Fingering {
+pub struct Fingering {
     instrument: &'static StringInstrument,
     placements: Vec<Option<usize>>,
 }

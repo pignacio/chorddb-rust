@@ -1,5 +1,5 @@
 [package]
-name = "server"
+name = "chorddb"
 version = "0.1.0"
 edition = "2021"
 
@@ -30,3 +30,10 @@ debug = 1
 
 [build]
 rustflags = ["-C", "symbol-mangling-version=v0"]
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
+
+[[bench]]
+name = "my_benchmark"
+harness = false
