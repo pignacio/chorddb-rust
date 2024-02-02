@@ -1,6 +1,4 @@
 use sorted_vec::SortedVec;
-use std::alloc::System;
-use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -12,7 +10,7 @@ use super::Chord;
 use super::Key;
 use super::Note;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Corda {
     note: Note,
     frets: usize,
@@ -24,6 +22,7 @@ impl Corda {
     }
 }
 
+#[derive(PartialEq, Eq)]
 pub struct StringInstrument {
     description: String,
     has_bass: bool,
@@ -84,6 +83,10 @@ impl Fingering {
             .iter()
             .map(|x| x.map(|n| n.to_string()).unwrap_or("X".to_owned()))
             .join(if need_comma { "," } else { "" })
+    }
+
+    pub fn placements(&self) -> &[Option<usize>] {
+        &self.placements
     }
 }
 
@@ -210,7 +213,7 @@ pub fn find_fingerings(chord: &Chord, instrument: &'static StringInstrument) -> 
 
     finder_backtrack(chord, instrument, &mut fingerings, &candidates, &mut state);
 
-    log::debug!(
+    log::trace!(
         "Found {} fingerings for chord:{} ins:{} with {} steps and {} checks, in {} us (no notes:{}, bad bass:{}, bad notes:{})",
         fingerings.len(),
         chord,
@@ -245,7 +248,6 @@ fn finder_backtrack(
             })
         }
     } else {
-        backtrap_step(chord, instrument, found_fingerings, candidates, state, None);
         let index = state.placements.len();
         for candidate in &candidates[index] {
             if is_in_range(&state, candidate) {
@@ -259,6 +261,7 @@ fn finder_backtrack(
                 );
             }
         }
+        backtrap_step(chord, instrument, found_fingerings, candidates, state, None);
     }
 }
 
@@ -299,8 +302,10 @@ fn is_valid_fingering(
         // state.bad_bass += 1;
         return false;
     }
-    
-    let fingering_keys: HashSet<Key> = state.sorted_keys.iter()
+
+    let fingering_keys: HashSet<Key> = state
+        .sorted_keys
+        .iter()
         .skip(if chord.root == chord.bass { 0 } else { 1 })
         .copied()
         .collect();
@@ -341,7 +346,7 @@ mod tests {
             Chord::parse("Db7/C").unwrap(),
         ];
         let count = 1;
-        
+
         for chord in chords {
             let start = SystemTime::now();
             let mut fingerings = vec![];
@@ -364,6 +369,6 @@ mod tests {
                 .for_each(|f| {
                     dbg!(f);
                 });
-        };
+        }
     }
 }

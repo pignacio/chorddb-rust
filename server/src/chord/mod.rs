@@ -1,4 +1,8 @@
-use std::{collections::{HashMap, HashSet}, fmt::Display, ops::Add};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    ops::Add,
+};
 
 use itertools::Itertools;
 use regex::Regex;
@@ -168,9 +172,15 @@ pub enum Variant {
     Major,
     Minor,
     Seventh,
+    MinorSeventh,
 }
 
-pub const ALL_VARIANTS: [Variant; 3] = [Variant::Major, Variant::Minor, Variant::Seventh];
+pub const ALL_VARIANTS: [Variant; 4] = [
+    Variant::Major,
+    Variant::Minor,
+    Variant::Seventh,
+    Variant::MinorSeventh,
+];
 
 lazy_static! {
     static ref VARIANTS_BY_TEXT: HashMap<&'static str, &'static Variant> =
@@ -187,6 +197,7 @@ impl Variant {
             Variant::Major => "",
             Variant::Minor => "m",
             Variant::Seventh => "7",
+            Variant::MinorSeventh => "m7",
         }
     }
 
@@ -195,6 +206,7 @@ impl Variant {
             Variant::Major => vec![0, 4, 7],
             Variant::Minor => vec![0, 3, 7],
             Variant::Seventh => vec![0, 4, 7, 10],
+            Variant::MinorSeventh => vec![0, 3, 7, 10],
         }
     }
 }
@@ -210,7 +222,7 @@ lazy_static! {
     static ref CHORD_REGEX: Regex = Regex::new(&*CHORD_PATTERN).unwrap();
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Chord {
     root: Key,
     variant: Variant,

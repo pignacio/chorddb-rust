@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use chorddb::chord::finder::GUITAR_STANDARD;
+use chorddb::song::{FileSongs, PrecomputedChords};
+use chorddb::web::{run_server, AppState};
 use chorddb::Opt;
-use chorddb::song::FileSongs;
-use chorddb::web::{AppState, run_server};
 use clap::Parser;
 
 #[tokio::main]
@@ -11,14 +12,18 @@ async fn main() {
 
     // Setup logging & RUST_LOG from args
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level()))
+        std::env::set_var(
+            "RUST_LOG",
+            format!("{},hyper=info,mio=info", opt.log_level()),
+        )
     }
     // Enable console logging
     tracing_subscriber::fmt::init();
-    
+
     let songs = FileSongs::new("songs.json");
     let state = AppState {
         songs: Arc::new(songs),
+        chords: Arc::new(PrecomputedChords::new(&GUITAR_STANDARD)),
     };
 
     run_server(opt, state).await;
