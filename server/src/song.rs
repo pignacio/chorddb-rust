@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
+    time::SystemTime,
 };
 
 use itertools::Itertools;
@@ -178,13 +179,14 @@ impl PrecomputedChords {
     pub fn new(instrument: &'static StringInstrument) -> Self {
         let mut fingerings = HashMap::new();
 
+        let start = SystemTime::now();
         log::info!("Precomputing fingerings for all chords");
         for root in ALL_KEYS {
             log::info!("Precomputing all chords with root {:?}", root);
             for variant in ALL_VARIANTS {
                 // for bass in ALL_KEYS {
-                // let chord = Chord::new(root, variant, bass);
                 let chord = Chord::new(root, variant, root);
+                // let chord = Chord::new(root, variant, bass);
                 let mut chord_fingerings = find_fingerings(&chord, instrument);
                 chord_fingerings.sort_by_cached_key(PrecomputedChords::fingering_penalty);
                 let top = 10;
@@ -203,7 +205,10 @@ impl PrecomputedChords {
             }
         }
 
-        log::info!("Done precomputing fingerings");
+        log::info!(
+            "Done precomputing fingerings. Took {}ms",
+            start.elapsed().unwrap().as_millis()
+        );
 
         PrecomputedChords {
             instrument,

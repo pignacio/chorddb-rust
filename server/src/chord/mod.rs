@@ -173,13 +173,19 @@ pub enum Variant {
     Minor,
     Seventh,
     MinorSeventh,
+    MinorSixth,
+    SuspendedSecond,
+    AddNinth,
 }
 
-pub const ALL_VARIANTS: [Variant; 4] = [
+pub const ALL_VARIANTS: [Variant; 7] = [
     Variant::Major,
     Variant::Minor,
     Variant::Seventh,
     Variant::MinorSeventh,
+    Variant::MinorSixth,
+    Variant::SuspendedSecond,
+    Variant::AddNinth,
 ];
 
 lazy_static! {
@@ -198,6 +204,9 @@ impl Variant {
             Variant::Minor => "m",
             Variant::Seventh => "7",
             Variant::MinorSeventh => "m7",
+            Variant::MinorSixth => "m6",
+            Variant::SuspendedSecond => "sus2",
+            Variant::AddNinth => "add9",
         }
     }
 
@@ -207,6 +216,9 @@ impl Variant {
             Variant::Minor => vec![0, 3, 7],
             Variant::Seventh => vec![0, 4, 7, 10],
             Variant::MinorSeventh => vec![0, 3, 7, 10],
+            Variant::MinorSixth => vec![0, 3, 7, 9],
+            Variant::SuspendedSecond => vec![0, 2, 7],
+            Variant::AddNinth => vec![0, 4, 7, 9],
         }
     }
 }
