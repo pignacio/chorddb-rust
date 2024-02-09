@@ -218,7 +218,7 @@ impl Variant {
             Variant::MinorSeventh => vec![0, 3, 7, 10],
             Variant::MinorSixth => vec![0, 3, 7, 9],
             Variant::SuspendedSecond => vec![0, 2, 7],
-            Variant::AddNinth => vec![0, 4, 7, 9],
+            Variant::AddNinth => vec![0, 4, 7, 14],
         }
     }
 }

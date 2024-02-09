@@ -96,8 +96,8 @@ impl Debug for Fingering {
     }
 }
 
-struct BacktrackState<'a> {
-    instrument: &'a StringInstrument,
+struct BacktrackState {
+    instrument: &'static StringInstrument,
     chord_keys: HashSet<Key>,
     placements: Vec<Option<usize>>,
     sorted_placements: SortedVec<usize>,
@@ -110,7 +110,23 @@ struct BacktrackState<'a> {
     bad_notes: i64,
 }
 
-impl<'a> BacktrackState<'a> {
+impl BacktrackState {
+    fn starting(chord: &Chord, instrument: &'static StringInstrument) -> BacktrackState {
+        BacktrackState {
+            instrument: instrument,
+            chord_keys: chord.keys().iter().copied().collect(),
+            placements: vec![],
+            sorted_placements: SortedVec::new(),
+            sorted_notes: SortedVec::new(),
+            sorted_keys: SortedVec::new(),
+            steps: 0,
+            checks: 0,
+            no_notes: 0,
+            bad_bass: 0,
+            bad_notes: 0,
+        }
+    }
+
     fn push_placement(&mut self, placement: Option<usize>) {
         self.placements.push(placement);
         if let Some(new_placement) = placement {
@@ -196,19 +212,7 @@ pub fn find_fingerings(chord: &Chord, instrument: &'static StringInstrument) -> 
         })
         .collect();
 
-    let mut state = BacktrackState {
-        instrument: instrument,
-        chord_keys: chord.keys().iter().copied().collect(),
-        placements: vec![],
-        sorted_placements: SortedVec::new(),
-        sorted_notes: SortedVec::new(),
-        sorted_keys: SortedVec::new(),
-        steps: 0,
-        checks: 0,
-        no_notes: 0,
-        bad_bass: 0,
-        bad_notes: 0,
-    };
+    let mut state = BacktrackState::starting(chord, instrument);
     let mut fingerings: Vec<Fingering> = vec![];
 
     finder_backtrack(chord, instrument, &mut fingerings, &candidates, &mut state);
@@ -241,11 +245,8 @@ fn finder_backtrack(
 ) {
     if state.placements.len() >= instrument.strings.len() {
         state.checks += 1;
-        if is_valid_fingering(chord, instrument, state) {
-            found_fingerings.push(Fingering {
-                instrument,
-                placements: state.placements.clone(),
-            })
+        if let Ok(fingering) = get_valid_fingering(chord, instrument, state) {
+            found_fingerings.push(fingering);
         }
     } else {
         let index = state.placements.len();
@@ -279,14 +280,14 @@ fn backtrap_step(
     state.pop_placement();
 }
 
-fn is_valid_fingering(
+fn get_valid_fingering(
     chord: &Chord,
     instrument: &StringInstrument,
     state: &mut BacktrackState,
-) -> bool {
+) -> Result<Fingering, String> {
     if state.sorted_notes.is_empty() {
         // state.no_notes += 1;
-        return false;
+        return Err("No notes".into());
     }
 
     let mut bass = state.sorted_notes.first().unwrap();
@@ -300,7 +301,10 @@ fn is_valid_fingering(
             bass.key()
         );
         // state.bad_bass += 1;
-        return false;
+        return Err(format!(
+            "Bass does not match. Expected {:?} but got {:?}",
+            chord.bass, bass
+        ));
     }
 
     let fingering_keys: HashSet<Key> = state
@@ -310,10 +314,16 @@ fn is_valid_fingering(
         .copied()
         .collect();
     if fingering_keys == state.chord_keys {
-        return true;
+        return Ok(Fingering {
+            instrument: state.instrument,
+            placements: state.placements.clone(),
+        });
     } else {
         // state.bad_notes += 1;
-        return false;
+        return Err(format!(
+            "Bad notes! Expected {:?} but got {:?}",
+            state.chord_keys, fingering_keys
+        ));
     }
 }
 
@@ -324,7 +334,6 @@ mod tests {
     use super::*;
     use test_log::test;
 
-    #[test]
     fn exploration() {
         let chords = [
             Chord::parse("A7").unwrap(),
@@ -369,6 +378,31 @@ mod tests {
                 .for_each(|f| {
                     dbg!(f);
                 });
+        }
+    }
+
+    fn build_state_for(
+        chord: &Chord,
+        instrument: &'static StringInstrument,
+        placements: Vec<Option<usize>>,
+    ) -> BacktrackState {
+        let mut state = BacktrackState::starting(chord, instrument);
+        for placement in placements {
+            state.push_placement(placement);
+        }
+        state
+    }
+
+    #[test]
+    fn test_is_valid_fingering() {
+        let chord = Chord::parse("Cadd9").expect("Invalid chord");
+        let fingering = vec![None, Some(3), Some(2), Some(0), Some(3), Some(0)];
+        let mut state = build_state_for(&chord, &GUITAR_STANDARD, fingering.clone());
+        if let Err(msg) = get_valid_fingering(&chord, &GUITAR_STANDARD, &mut state) {
+            panic!(
+                "Expected fingering {:?} to be valid for {} but it was not. Error: {}",
+                fingering, chord, msg
+            )
         }
     }
 }
