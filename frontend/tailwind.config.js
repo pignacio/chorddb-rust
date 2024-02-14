@@ -7,4 +7,7 @@ module.exports = {
   plugins: [
     require("daisyui"),
   ],
+  safelist: [
+    "font-mono"
+  ]
 }

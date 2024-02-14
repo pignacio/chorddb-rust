@@ -24,15 +24,15 @@ function buildLines(contentId: string, lines: LineBit[][]) {
     if (content == undefined) {
         console.error("Could not find element with id " + contentId);
     }
-    let pre = document.createElement("pre")
-    pre.classList.add("tab")
+    let pre = document.createElement("div")
+    pre.classList.add("tablature")
+    pre.classList.add("font-mono")
 
     for (let line of lines) {
         buildLine(line).forEach(html => {
             pre.appendChild(html)
-            pre.innerHTML += "\n"
+            pre.appendChild(document.createElement("br"))
         })
-
     }
 
     content?.appendChild(pre)

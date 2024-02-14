@@ -5,7 +5,7 @@ function renderInSingleLine(bits) {
   let currentPosition = 0;
   for (let bit of bits) {
     while (currentPosition < bit.position) {
-      html.innerHTML += " ";
+      html.innerHTML += "&nbsp;";
       currentPosition++;
     }
     html.appendChild(bit.html);
@@ -28,12 +28,13 @@ var buildLines = function(contentId, lines) {
   if (content == undefined) {
     console.error("Could not find element with id " + contentId);
   }
-  let pre = document.createElement("pre");
-  pre.classList.add("tab");
+  let pre = document.createElement("div");
+  pre.classList.add("tablature");
+  pre.classList.add("font-mono");
   for (let line of lines) {
     buildLine(line).forEach((html) => {
       pre.appendChild(html);
-      pre.innerHTML += "\n";
+      pre.appendChild(document.createElement("br"));
     });
   }
   content?.appendChild(pre);
