@@ -1,13 +1,16 @@
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/dist/chorddb.css" rel="stylesheet">
     <script module="chorddb" src="/dist/chorddb.js" defer></script>
 </head>
 
-<div class="navbar">
-    <a href="/">ChordDB</a>
-    <ul>
-        <li><a href="/new_song">Add Song</a></li>
-    </ul>
+<div class="navbar bg-neutral text-neutral-content">
+  <div class="navbar-start">
+    <a class="btn btn-ghost text-xl">ChordDB</a>
+  </div>
 </div>
+
 
 <div class="content">
     {% block content %}
