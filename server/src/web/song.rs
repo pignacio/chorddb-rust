@@ -10,8 +10,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
+    chord::finder::GUITAR_STANDARD,
     parser::{parse_tablature, Line, LineBit},
-    song::Song,
+    song::{ChordRepository, Song},
     web::not_found,
 };
 
@@ -65,7 +66,7 @@ struct SongTemplate {
 
 pub async fn song(
     Path(id): Path<String>,
-    State(AppState { songs, .. }): State<AppState>,
+    State(AppState { songs, chords, .. }): State<AppState>,
 ) -> impl IntoResponse {
     return Html(
         Uuid::parse_str(&id)
@@ -74,7 +75,7 @@ pub async fn song(
             .map(|song| {
                 SongTemplate {
                     song: song.clone(),
-                    tab: test(&song),
+                    tab: test(&song, chords.as_ref()),
                 }
                 .render()
                 .unwrap()
@@ -86,14 +87,14 @@ pub async fn song(
     );
 }
 
-fn test(song: &Song) -> String {
+fn test(song: &Song, chords: &dyn ChordRepository) -> String {
     let tab = parse_tablature(song.contents());
-    let model: Vec<Vec<LineBitModel>> = tab.iter().map(serialize_line).collect();
+    let model: Vec<Vec<LineBitModel>> = tab.iter().map(|l| serialize_line(l, chords)).collect();
     serde_json::to_string(&model).unwrap()
 }
 
-fn serialize_line(line: &Line) -> Vec<LineBitModel> {
-    line.iter().map(serialize_bit).collect()
+fn serialize_line(line: &Line, chords: &dyn ChordRepository) -> Vec<LineBitModel> {
+    line.iter().map(|b| serialize_bit(b, chords)).collect()
 }
 
 lazy_static! {
@@ -147,7 +148,7 @@ fn get_fingering(chord: &str) -> String {
         .unwrap_or("XXXXXX".to_owned())
 }
 
-fn serialize_bit(bit: &LineBit) -> LineBitModel {
+fn serialize_bit(bit: &LineBit, chords: &dyn ChordRepository) -> LineBitModel {
     match &bit.comp {
         crate::parser::Comp::Text(text) => LineBitModel {
             bit_type: "text".to_owned(),
@@ -164,7 +165,11 @@ fn serialize_bit(bit: &LineBit) -> LineBitModel {
             text: original_text.clone(),
             chord: Some(ChordModel {
                 chord: chord.text(),
-                fingering: get_fingering(&chord.text()),
+                fingering: chords
+                    .get_fingerings(&GUITAR_STANDARD, chord)
+                    .first()
+                    .map(|f| f.to_str())
+                    .unwrap_or("XXXXXX".to_owned()),
             }),
         },
     }

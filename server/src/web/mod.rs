@@ -10,10 +10,14 @@ use axum::{
     Router,
 };
 
+use tokio::io::{stdin, AsyncBufReadExt, BufReader};
 use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
-use crate::{song::SongRepository, Opt};
+use crate::{
+    song::{ChordRepository, SongRepository},
+    Opt,
+};
 
 mod home;
 mod not_found;
@@ -22,6 +26,7 @@ mod song;
 #[derive(Clone)]
 pub struct AppState {
     pub songs: Arc<dyn SongRepository + Send + Sync>,
+    pub chords: Arc<dyn ChordRepository + Send + Sync>,
 }
 
 pub async fn run_server(opt: Opt, state: AppState) {
@@ -45,8 +50,18 @@ pub async fn run_server(opt: Opt, state: AppState) {
     let listener = tokio::net::TcpListener::bind(sock_addr).await.unwrap();
 
     axum::serve(listener, app)
+        .with_graceful_shutdown(read_stdin_until_enter())
         .await
         .expect("Unable to start server");
+}
+
+async fn read_stdin_until_enter() {
+    let mut reader = BufReader::new(stdin());
+
+    println!("Waiting for enter to stop server");
+    reader.read_line(&mut String::new()).await.unwrap();
+
+    println!("Stopping server");
 }
 
 async fn hello() -> impl IntoResponse {

@@ -1,13 +1,16 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    ops::Add,
+};
 
 use itertools::Itertools;
 use regex::Regex;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub mod finder;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Key {
-    A,
-    Bb,
-    B,
     C,
     Db,
     D,
@@ -17,13 +20,13 @@ pub enum Key {
     Gb,
     G,
     Ab,
+    A,
+    Bb,
+    B,
 }
 
 // This must honor key == ALL_KEYS[key.ordinal()]
-const ALL_KEYS: [Key; 12] = [
-    Key::A,
-    Key::Bb,
-    Key::B,
+pub const ALL_KEYS: [Key; 12] = [
     Key::C,
     Key::Db,
     Key::D,
@@ -33,6 +36,9 @@ const ALL_KEYS: [Key; 12] = [
     Key::Gb,
     Key::G,
     Key::Ab,
+    Key::A,
+    Key::Bb,
+    Key::B,
 ];
 
 lazy_static! {
@@ -54,26 +60,23 @@ impl Key {
 
     fn ordinal(&self) -> usize {
         match self {
-            Key::A => 0,
-            Key::Bb => 1,
-            Key::B => 2,
-            Key::C => 3,
-            Key::Db => 4,
-            Key::D => 5,
-            Key::Eb => 6,
-            Key::E => 7,
-            Key::F => 8,
-            Key::Gb => 9,
-            Key::G => 10,
-            Key::Ab => 11,
+            Key::C => 0,
+            Key::Db => 1,
+            Key::D => 2,
+            Key::Eb => 3,
+            Key::E => 4,
+            Key::F => 5,
+            Key::Gb => 6,
+            Key::G => 7,
+            Key::Ab => 8,
+            Key::A => 9,
+            Key::Bb => 10,
+            Key::B => 11,
         }
     }
 
     pub const fn text(&self) -> &'static str {
         match self {
-            Key::A => "A",
-            Key::Bb => "Bb",
-            Key::B => "B",
             Key::C => "C",
             Key::Db => "Db",
             Key::D => "D",
@@ -83,14 +86,14 @@ impl Key {
             Key::Gb => "Gb",
             Key::G => "G",
             Key::Ab => "Ab",
+            Key::A => "A",
+            Key::Bb => "Bb",
+            Key::B => "B",
         }
     }
 
     pub fn valid_names(&self) -> Vec<&'static str> {
         match self {
-            Key::A => vec!["A"],
-            Key::Bb => vec!["A#", "Bb"],
-            Key::B => vec!["B"],
             Key::C => vec!["C"],
             Key::Db => vec!["C#", "Db"],
             Key::D => vec!["D"],
@@ -100,23 +103,90 @@ impl Key {
             Key::Gb => vec!["F#", "Gb"],
             Key::G => vec!["G"],
             Key::Ab => vec!["G#", "Ab"],
+            Key::A => vec!["A"],
+            Key::Bb => vec!["A#", "Bb"],
+            Key::B => vec!["B"],
         }
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Note {
     key: Key,
-    octave: i8,
+    octave: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+impl Note {
+    fn new(key: Key, octave: i32) -> Self {
+        Note { key, octave }
+    }
+
+    fn ordinal(&self) -> i32 {
+        return self.key.ordinal() as i32 + 12 * self.octave;
+    }
+
+    fn from_ordinal(ordinal: i32) -> Self {
+        let mut octave = ordinal / 12;
+        let mut key_ordinal = ordinal % 12;
+        while key_ordinal < 0 {
+            key_ordinal += 12;
+            octave -= 1;
+        }
+        Note {
+            key: ALL_KEYS[key_ordinal as usize],
+            octave,
+        }
+    }
+
+    pub fn key(&self) -> Key {
+        self.key
+    }
+
+    pub fn octave(&self) -> i32 {
+        self.octave
+    }
+}
+
+impl Add<i32> for Note {
+    type Output = Note;
+
+    fn add(self, rhs: i32) -> Self::Output {
+        return Note::from_ordinal(self.ordinal() + rhs);
+    }
+}
+
+impl PartialOrd for Note {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(Ord::cmp(self, &other))
+    }
+}
+
+impl Ord for Note {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.ordinal().cmp(&other.ordinal())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Variant {
     Major,
     Minor,
     Seventh,
+    MinorSeventh,
+    MinorSixth,
+    SuspendedSecond,
+    AddNinth,
 }
 
-const ALL_VARIANTS: [Variant; 3] = [Variant::Major, Variant::Minor, Variant::Seventh];
+pub const ALL_VARIANTS: [Variant; 7] = [
+    Variant::Major,
+    Variant::Minor,
+    Variant::Seventh,
+    Variant::MinorSeventh,
+    Variant::MinorSixth,
+    Variant::SuspendedSecond,
+    Variant::AddNinth,
+];
 
 lazy_static! {
     static ref VARIANTS_BY_TEXT: HashMap<&'static str, &'static Variant> =
@@ -133,6 +203,22 @@ impl Variant {
             Variant::Major => "",
             Variant::Minor => "m",
             Variant::Seventh => "7",
+            Variant::MinorSeventh => "m7",
+            Variant::MinorSixth => "m6",
+            Variant::SuspendedSecond => "sus2",
+            Variant::AddNinth => "add9",
+        }
+    }
+
+    pub fn intervals(&self) -> Vec<usize> {
+        match self {
+            Variant::Major => vec![0, 4, 7],
+            Variant::Minor => vec![0, 3, 7],
+            Variant::Seventh => vec![0, 4, 7, 10],
+            Variant::MinorSeventh => vec![0, 3, 7, 10],
+            Variant::MinorSixth => vec![0, 3, 7, 9],
+            Variant::SuspendedSecond => vec![0, 2, 7],
+            Variant::AddNinth => vec![0, 4, 7, 14],
         }
     }
 }
@@ -148,7 +234,7 @@ lazy_static! {
     static ref CHORD_REGEX: Regex = Regex::new(&*CHORD_PATTERN).unwrap();
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Chord {
     root: Key,
     variant: Variant,
@@ -193,6 +279,16 @@ impl Chord {
                 .unwrap_or(root),
         })
     }
+
+    pub fn keys(&self) -> HashSet<Key> {
+        let root_ordinal = self.root.ordinal();
+        self.variant
+            .intervals()
+            .iter()
+            .map(|interval| (root_ordinal + interval) % 12)
+            .map(|o| ALL_KEYS[o])
+            .collect()
+    }
 }
 
 impl Display for Chord {
@@ -232,7 +328,7 @@ mod tests {
 
     fn parse_chord(text: String) -> Option<Chord> {
         let chord = Chord::parse(&text);
-        log::info!("Parsed '{}' into {:?}", &text, chord);
+        log::trace!("Parsed '{}' into {:?}", &text, chord);
         return chord;
     }
 
