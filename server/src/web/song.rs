@@ -51,10 +51,10 @@ pub async fn add_song(
         payload.contents,
     );
 
-    let id = song.id().clone();
+    let id = *song.id();
     songs.add_song(song);
 
-    return Redirect::to(&format!("/songs/{}", id));
+    Redirect::to(&format!("/songs/{}", id))
 }
 
 #[derive(Template)]
@@ -82,7 +82,7 @@ pub async fn song(
             })
             .unwrap_or_else(|| {
                 println!("Could not find song for '{}'", &id);
-                return not_found::not_found_html();
+                not_found::not_found_html()
             }),
     );
 }
@@ -139,13 +139,6 @@ lazy_static! {
     .into_iter()
     .map(|(a, b)| (a.to_owned(), b.to_owned()))
     .collect();
-}
-
-fn get_fingering(chord: &str) -> String {
-    FINGERING_BY_CHORD
-        .get(chord)
-        .map(|x| x.to_owned())
-        .unwrap_or("XXXXXX".to_owned())
 }
 
 fn serialize_bit(bit: &LineBit, chords: &dyn ChordRepository) -> LineBitModel {

@@ -113,7 +113,7 @@ struct BacktrackState {
 impl BacktrackState {
     fn starting(chord: &Chord, instrument: &'static StringInstrument) -> BacktrackState {
         BacktrackState {
-            instrument: instrument,
+            instrument,
             chord_keys: chord.keys().iter().copied().collect(),
             placements: vec![],
             sorted_placements: SortedVec::new(),
@@ -163,17 +163,6 @@ impl BacktrackState {
         }
     }
 
-    fn find_index_for(&self, placement: usize) -> usize {
-        let mut index = 0;
-        for existing_placement in self.sorted_placements.iter() {
-            if existing_placement >= &placement {
-                break;
-            }
-            index += 1;
-        }
-        index
-    }
-
     fn first_fingered_placement(&self) -> Option<&usize> {
         self.sorted_placements.first()
     }
@@ -193,9 +182,9 @@ fn is_in_range(state: &BacktrackState, fret: &usize) -> bool {
         return true;
     };
 
-    return *fret == 0
+    *fret == 0
         || ((*max <= MAX_DISPLACEMENT || *fret >= max - MAX_DISPLACEMENT)
-            && *fret <= min + MAX_DISPLACEMENT);
+            && *fret <= min + MAX_DISPLACEMENT)
 }
 
 pub fn find_fingerings(chord: &Chord, instrument: &'static StringInstrument) -> Vec<Fingering> {
@@ -251,7 +240,7 @@ fn finder_backtrack(
     } else {
         let index = state.placements.len();
         for candidate in &candidates[index] {
-            if is_in_range(&state, candidate) {
+            if is_in_range(state, candidate) {
                 backtrap_step(
                     chord,
                     instrument,
@@ -290,7 +279,7 @@ fn get_valid_fingering(
         return Err("No notes".into());
     }
 
-    let mut bass = state.sorted_notes.first().unwrap();
+    let bass = state.sorted_notes.first().unwrap();
 
     if instrument.has_bass && bass.key() != chord.bass {
         log::trace!(
@@ -314,16 +303,16 @@ fn get_valid_fingering(
         .copied()
         .collect();
     if fingering_keys == state.chord_keys {
-        return Ok(Fingering {
+        Ok(Fingering {
             instrument: state.instrument,
             placements: state.placements.clone(),
-        });
+        })
     } else {
         // state.bad_notes += 1;
-        return Err(format!(
+        Err(format!(
             "Bad notes! Expected {:?} but got {:?}",
             state.chord_keys, fingering_keys
-        ));
+        ))
     }
 }
 
@@ -359,7 +348,7 @@ mod tests {
         for chord in chords {
             let start = SystemTime::now();
             let mut fingerings = vec![];
-            (0..count).into_iter().for_each(|_| {
+            (0..count).for_each(|_| {
                 fingerings = find_fingerings(&chord, &GUITAR_STANDARD);
             });
             let elapsed = start.elapsed().unwrap();

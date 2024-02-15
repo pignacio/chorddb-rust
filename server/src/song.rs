@@ -49,23 +49,23 @@ impl Song {
     }
 
     pub fn id(&self) -> &Uuid {
-        return &self.header.id();
+        return self.header.id();
     }
 
     pub fn author(&self) -> &str {
-        return &self.header.author();
+        return self.header.author();
     }
 
     pub fn title(&self) -> &str {
-        return &self.header.title();
+        return self.header.title();
     }
 
     pub fn header(&self) -> &SongHeader {
-        return &self.header;
+        &self.header
     }
 
     pub fn contents(&self) -> &str {
-        return &self.contents;
+        &self.contents
     }
 }
 
@@ -79,11 +79,17 @@ pub struct MemorySongs {
     songs: RwLock<HashMap<Uuid, Song>>,
 }
 
+impl Default for MemorySongs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MemorySongs {
     pub fn new() -> Self {
-        return MemorySongs {
+        MemorySongs {
             songs: HashMap::new().into(),
-        };
+        }
     }
 
     fn read_songs(&self) -> RwLockReadGuard<'_, HashMap<Uuid, Song>> {
@@ -108,7 +114,7 @@ impl SongRepository for MemorySongs {
 
     fn add_song(&self, song: Song) {
         let mut songs = self.write_songs();
-        songs.insert(song.id().clone(), song);
+        songs.insert(*song.id(), song);
     }
 }
 
@@ -121,7 +127,7 @@ fn load_cache(path: &str) -> MemorySongs {
     let data: Vec<Song> = std::fs::read_to_string(path)
         .ok()
         .and_then(|data| serde_json::from_str(&data).ok())
-        .unwrap_or(Vec::new());
+        .unwrap_or_default();
 
     let songs = MemorySongs::new();
 
@@ -129,7 +135,7 @@ fn load_cache(path: &str) -> MemorySongs {
         songs.add_song(song)
     }
 
-    return songs;
+    songs
 }
 
 impl FileSongs {
@@ -216,14 +222,6 @@ impl PrecomputedChords {
         }
     }
 
-    fn fingering_score(fingering: &Fingering) -> usize {
-        let mut score = fingering.placements().iter().map(|p| p.unwrap_or(2)).sum();
-        if Self::has_note_hole(fingering) {
-            score += 20;
-        }
-        score
-    }
-
     fn has_note_hole(fingering: &Fingering) -> bool {
         let mut found_finger = false;
         let mut found_hole = false;
@@ -233,10 +231,8 @@ impl PrecomputedChords {
                     return true;
                 }
                 found_finger = true;
-            } else {
-                if found_finger {
-                    found_hole = true;
-                }
+            } else if found_finger {
+                found_hole = true;
             }
         }
         false
@@ -251,10 +247,8 @@ impl PrecomputedChords {
                 } else if 0 == *note && found_bar {
                     return true;
                 }
-            } else {
-                if found_bar {
-                    return true;
-                }
+            } else if found_bar {
+                return true;
             }
         }
         false
@@ -306,7 +300,7 @@ impl PrecomputedChords {
         // Does it skip strings at the start?
         let mut start = 0;
         for placement in fingering.placements() {
-            if !matches!(placement, None) {
+            if !placement.is_none() {
                 break;
             }
             start += 1;
@@ -316,7 +310,7 @@ impl PrecomputedChords {
         // Does it skip strings at the end?
         let mut end = 0;
         for placement in fingering.placements().iter().rev() {
-            if !matches!(placement, None) {
+            if !placement.is_none() {
                 break;
             }
             end += 1;
@@ -353,35 +347,6 @@ impl PrecomputedChords {
 
         score
     }
-
-    /*
-    def get_fingering_penalty(fingering):
-    try:
-        bar = min(x for x in fingering.positions if x)
-    except ValueError:
-        bar = 0
-
-    indexed_poss = sorted(enumerate(x - bar for x in fingering.positions
-                                    if x > bar),
-                          key=lambda string_pos: (string_pos[1], string_pos[0]),
-                          reverse=True)
-    fingers = len(indexed_poss)
-    if fingers > 4 or (bar and fingers > 3):
-        return {'too many fingers': 10000}
-    penalty = {
-        'start': fingering.start * 5 ** 2,
-        'end': (fingering.instrument.size() - fingering.start -
-                len(fingering.positions)) * 8 ** 2,
-        'positions': sum((p - bar + 2) ** 2 for p in fingering.positions),
-        'bar': bar * fingering.instrument.size() * 3 if bar else 0,
-        'consecutive_diffs': sum((a - b) ** 2 for a, b in
-                                 zip(fingering.positions,
-                                     fingering.positions[1:])
-                                 if a and b),
-        'four_fingers': 50 if fingers == 4 else 0
-    }
-    return get_fingering_penalty
-    */
 }
 
 impl ChordRepository for PrecomputedChords {
