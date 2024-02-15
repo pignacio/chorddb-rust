@@ -641,8 +641,8 @@ html {
 }
 
 h1 {
-  font-size: 1.5rem;
-  line-height: 2rem;
+  font-size: 1.875rem;
+  line-height: 2.25rem;
   margin-top: 1rem;
   margin-bottom: 1rem;
 }
@@ -1880,6 +1880,14 @@ input.tab:checked + .tab-content,
 
 .max-w-4xl {
   max-width: 56rem;
+}
+
+.list-inside {
+  list-style-position: inside;
+}
+
+.list-image-\[url\(\/static\/musical-note\.svg\)\] {
+  list-style-image: url(/static/musical-note.svg);
 }
 
 .grid-cols-2 {
