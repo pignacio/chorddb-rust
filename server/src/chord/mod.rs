@@ -44,12 +44,11 @@ pub const ALL_KEYS: [Key; 12] = [
 lazy_static! {
     static ref KEYS_BY_NAME: HashMap<&'static str, &'static Key> = ALL_KEYS
         .iter()
-        .map(|k| k
+        .flat_map(|k| k
             .valid_names()
             .into_iter()
             .map(|n| (n, k))
             .collect::<Vec<_>>())
-        .flatten()
         .collect();
 }
 
@@ -122,7 +121,7 @@ impl Note {
     }
 
     fn ordinal(&self) -> i32 {
-        return self.key.ordinal() as i32 + 12 * self.octave;
+        self.key.ordinal() as i32 + 12 * self.octave
     }
 
     fn from_ordinal(ordinal: i32) -> Self {
@@ -151,13 +150,13 @@ impl Add<i32> for Note {
     type Output = Note;
 
     fn add(self, rhs: i32) -> Self::Output {
-        return Note::from_ordinal(self.ordinal() + rhs);
+        Note::from_ordinal(self.ordinal() + rhs)
     }
 }
 
 impl PartialOrd for Note {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(Ord::cmp(self, &other))
+        Some(Ord::cmp(self, other))
     }
 }
 
@@ -231,7 +230,7 @@ lazy_static! {
         "^(?<root>{})(?<variant>{})(?:/(?<bass>{}))?$",
         *KEY_PATTERN, *VARIANT_PATTERN, *KEY_PATTERN
     );
-    static ref CHORD_REGEX: Regex = Regex::new(&*CHORD_PATTERN).unwrap();
+    static ref CHORD_REGEX: Regex = Regex::new(&CHORD_PATTERN).unwrap();
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -329,7 +328,7 @@ mod tests {
     fn parse_chord(text: String) -> Option<Chord> {
         let chord = Chord::parse(&text);
         log::trace!("Parsed '{}' into {:?}", &text, chord);
-        return chord;
+        chord
     }
 
     #[test]

@@ -15,11 +15,11 @@ struct HelloTemplate {
 }
 
 pub async fn home(State(AppState { songs, .. }): State<AppState>) -> impl IntoResponse {
-    return Html(
+    Html(
         HelloTemplate {
             songs: songs.all_songs(),
         }
         .render()
         .unwrap(),
-    );
+    )
 }

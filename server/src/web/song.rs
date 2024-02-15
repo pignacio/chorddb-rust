@@ -51,10 +51,10 @@ pub async fn add_song(
         payload.contents,
     );
 
-    let id = song.id().clone();
+    let id = *song.id();
     songs.add_song(song);
 
-    return Redirect::to(&format!("/songs/{}", id));
+    Redirect::to(&format!("/songs/{}", id))
 }
 
 #[derive(Template)]
@@ -82,7 +82,7 @@ pub async fn song(
             })
             .unwrap_or_else(|| {
                 println!("Could not find song for '{}'", &id);
-                return not_found::not_found_html();
+                not_found::not_found_html()
             }),
     );
 }

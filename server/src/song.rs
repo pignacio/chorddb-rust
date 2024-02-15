@@ -49,23 +49,23 @@ impl Song {
     }
 
     pub fn id(&self) -> &Uuid {
-        return &self.header.id();
+        return self.header.id();
     }
 
     pub fn author(&self) -> &str {
-        return &self.header.author();
+        return self.header.author();
     }
 
     pub fn title(&self) -> &str {
-        return &self.header.title();
+        return self.header.title();
     }
 
     pub fn header(&self) -> &SongHeader {
-        return &self.header;
+        &self.header
     }
 
     pub fn contents(&self) -> &str {
-        return &self.contents;
+        &self.contents
     }
 }
 
@@ -79,11 +79,17 @@ pub struct MemorySongs {
     songs: RwLock<HashMap<Uuid, Song>>,
 }
 
+impl Default for MemorySongs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MemorySongs {
     pub fn new() -> Self {
-        return MemorySongs {
+        MemorySongs {
             songs: HashMap::new().into(),
-        };
+        }
     }
 
     fn read_songs(&self) -> RwLockReadGuard<'_, HashMap<Uuid, Song>> {
@@ -108,7 +114,7 @@ impl SongRepository for MemorySongs {
 
     fn add_song(&self, song: Song) {
         let mut songs = self.write_songs();
-        songs.insert(song.id().clone(), song);
+        songs.insert(*song.id(), song);
     }
 }
 
@@ -121,7 +127,7 @@ fn load_cache(path: &str) -> MemorySongs {
     let data: Vec<Song> = std::fs::read_to_string(path)
         .ok()
         .and_then(|data| serde_json::from_str(&data).ok())
-        .unwrap_or(Vec::new());
+        .unwrap_or_default();
 
     let songs = MemorySongs::new();
 
@@ -129,7 +135,7 @@ fn load_cache(path: &str) -> MemorySongs {
         songs.add_song(song)
     }
 
-    return songs;
+    songs
 }
 
 impl FileSongs {
@@ -225,10 +231,8 @@ impl PrecomputedChords {
                     return true;
                 }
                 found_finger = true;
-            } else {
-                if found_finger {
-                    found_hole = true;
-                }
+            } else if found_finger {
+                found_hole = true;
             }
         }
         false
@@ -243,10 +247,8 @@ impl PrecomputedChords {
                 } else if 0 == *note && found_bar {
                     return true;
                 }
-            } else {
-                if found_bar {
-                    return true;
-                }
+            } else if found_bar {
+                return true;
             }
         }
         false
@@ -298,7 +300,7 @@ impl PrecomputedChords {
         // Does it skip strings at the start?
         let mut start = 0;
         for placement in fingering.placements() {
-            if !matches!(placement, None) {
+            if !placement.is_none() {
                 break;
             }
             start += 1;
@@ -308,7 +310,7 @@ impl PrecomputedChords {
         // Does it skip strings at the end?
         let mut end = 0;
         for placement in fingering.placements().iter().rev() {
-            if !matches!(placement, None) {
+            if !placement.is_none() {
                 break;
             }
             end += 1;
