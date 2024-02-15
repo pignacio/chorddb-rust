@@ -163,17 +163,6 @@ impl BacktrackState {
         }
     }
 
-    fn find_index_for(&self, placement: usize) -> usize {
-        let mut index = 0;
-        for existing_placement in self.sorted_placements.iter() {
-            if existing_placement >= &placement {
-                break;
-            }
-            index += 1;
-        }
-        index
-    }
-
     fn first_fingered_placement(&self) -> Option<&usize> {
         self.sorted_placements.first()
     }
@@ -290,7 +279,7 @@ fn get_valid_fingering(
         return Err("No notes".into());
     }
 
-    let mut bass = state.sorted_notes.first().unwrap();
+    let bass = state.sorted_notes.first().unwrap();
 
     if instrument.has_bass && bass.key() != chord.bass {
         log::trace!(

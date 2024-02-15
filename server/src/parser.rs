@@ -97,27 +97,7 @@ fn push_text(current_text: &mut String, line: &mut Line, position: &mut usize) {
     current_text.clear();
 }
 
-// fn get_comp_from_token(token: &Token) -> Comp {
-//     match token {
-//         Token::Whitespace(text) | Token::Text(text) => Comp::Text(text.to_owned()),
-//         Token::Chord{chord, ..} => Comp::Chord(chord.clone()),
-//         Token::Chord{chord, ..} => Comp::Chord(chord.clone()),
-//     }
-// }
-
-// fn try_parse_chord(extracted: &mut Vec<Comp>, current_text: &mut Vec<char>, current_chord: &mut Vec<char>) {
-//     let Some(chord) = Chord::parse(current_chord.iter().collect::<String>()) else {
-//         current_text.append(current_chord);
-//         return;
-//     };
-//     if !current_text.is_empty() {
-//         extracted.push(Comp::Text { text: current_text.iter().collect() })
-//         current_text.clear();
-//     }
-//     extracted.push(Comp::Chord { chord: chord })
-
-// }
-
+#[cfg(test)]
 mod tests {
     use crate::chord::{Key, Variant};
 

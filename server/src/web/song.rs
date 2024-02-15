@@ -141,13 +141,6 @@ lazy_static! {
     .collect();
 }
 
-fn get_fingering(chord: &str) -> String {
-    FINGERING_BY_CHORD
-        .get(chord)
-        .map(|x| x.to_owned())
-        .unwrap_or("XXXXXX".to_owned())
-}
-
 fn serialize_bit(bit: &LineBit, chords: &dyn ChordRepository) -> LineBitModel {
     match &bit.comp {
         crate::parser::Comp::Text(text) => LineBitModel {

@@ -4,6 +4,3 @@ resolver = "2"
 
 [profile.release]
 debug = 1
-
-[build]
-rustflags = ["-C", "symbol-mangling-version=v0"]

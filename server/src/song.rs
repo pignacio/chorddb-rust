@@ -216,14 +216,6 @@ impl PrecomputedChords {
         }
     }
 
-    fn fingering_score(fingering: &Fingering) -> usize {
-        let mut score = fingering.placements().iter().map(|p| p.unwrap_or(2)).sum();
-        if Self::has_note_hole(fingering) {
-            score += 20;
-        }
-        score
-    }
-
     fn has_note_hole(fingering: &Fingering) -> bool {
         let mut found_finger = false;
         let mut found_hole = false;
@@ -353,35 +345,6 @@ impl PrecomputedChords {
 
         score
     }
-
-    /*
-    def get_fingering_penalty(fingering):
-    try:
-        bar = min(x for x in fingering.positions if x)
-    except ValueError:
-        bar = 0
-
-    indexed_poss = sorted(enumerate(x - bar for x in fingering.positions
-                                    if x > bar),
-                          key=lambda string_pos: (string_pos[1], string_pos[0]),
-                          reverse=True)
-    fingers = len(indexed_poss)
-    if fingers > 4 or (bar and fingers > 3):
-        return {'too many fingers': 10000}
-    penalty = {
-        'start': fingering.start * 5 ** 2,
-        'end': (fingering.instrument.size() - fingering.start -
-                len(fingering.positions)) * 8 ** 2,
-        'positions': sum((p - bar + 2) ** 2 for p in fingering.positions),
-        'bar': bar * fingering.instrument.size() * 3 if bar else 0,
-        'consecutive_diffs': sum((a - b) ** 2 for a, b in
-                                 zip(fingering.positions,
-                                     fingering.positions[1:])
-                                 if a and b),
-        'four_fingers': 50 if fingers == 4 else 0
-    }
-    return get_fingering_penalty
-    */
 }
 
 impl ChordRepository for PrecomputedChords {

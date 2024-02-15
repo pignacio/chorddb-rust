@@ -10,15 +10,13 @@ use super::AppState;
 
 #[derive(Template)]
 #[template(path = "home.html")]
-struct HelloTemplate<'a> {
-    name: &'a str,
+struct HelloTemplate {
     songs: Vec<SongHeader>,
 }
 
 pub async fn home(State(AppState { songs, .. }): State<AppState>) -> impl IntoResponse {
     return Html(
         HelloTemplate {
-            name: "Nacho",
             songs: songs.all_songs(),
         }
         .render()
