@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Add Song</h1>
+
+<form class="mt-4" action="/songs" method="POST">
+  <div class="grid grid-cols-2 gap-4 max-w-4xl">
+      <input type="text" name="author" placeholder="Author" class="input input-bordered" />
+      <input type="text" name="title" placeholder="Title" class="input input-bordered" />
+      <textarea name="contents" placeholder="Tab" class="textarea textarea-bordered textarea-lg col-span-2 h-64" ></textarea>
+  </div>
+  <button class="btn btn-primary text-xl mt-4 w-32" type="submit">Add</button>
+</form>
+
+
+<h1>Songs</h1>
+<ul class="text-xl list-inside list-image-[url(/static/musical-note.svg)]">
+  {% for song in songs %}
+  <li><a href="/songs/{{ song.id() }}">{{ song.author() }} - {{ song.title() }}</a></li>
+  {% endfor %}
+</ul>
+
+
+{% endblock %}

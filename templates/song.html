@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ song.author() }} - {{ song.title() }}</h1>
+
+Auto:
+<div id="tablature"></div>
+
+<button class="btn btn-outline btn-info" onClick="document.getElementById('original').classList.toggle('invisible')">Show Original</button>
+<pre id="original" class="tablature invisible">{{ song.contents() }}</pre>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let tab = {{ tab| safe }};
+        buildLines("tablature", tab);
+    })
+</script>
+{% endblock %}

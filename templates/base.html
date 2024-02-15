@@ -1,0 +1,19 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/static/chorddb.css" rel="stylesheet">
+    <link href="/static/musical-note.svg" rel="icon">
+    <script module="chorddb" src="/static/chorddb.js" defer></script>
+</head>
+
+<div class="navbar bg-neutral text-neutral-content">
+  <div class="navbar-start">
+    <a href="/" class="btn btn-ghost text-xl">ChordDB</a>
+  </div>
+</div>
+
+
+<div class="container mx-auto">
+    {% block content %}
+    {% endblock %}
+</div>

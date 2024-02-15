@@ -12,7 +12,7 @@ export function renderInSingleLine(bits: RenderBit[]): HTMLElement {
     let currentPosition = 0;
     for (let bit of bits) {
         while (currentPosition < bit.position) {
-            html.innerHTML += " "
+            html.innerHTML += "&nbsp;"
             currentPosition++
         }
         html.appendChild(bit.html)
