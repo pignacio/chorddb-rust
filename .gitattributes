@@ -1,2 +1,3 @@
 *.sh text eol=lf
 dist/chorddb.js text eol=lf
+dist/chorddb.css text eol=lf
