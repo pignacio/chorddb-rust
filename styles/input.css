@@ -16,6 +16,7 @@
   @apply font-mono;
   font-size: 1.2rem;
   line-height: 1.3rem;
+  /*background-color: theme('colors.gray.100');*/
 }
 
 .tablature .chord {
@@ -38,14 +39,19 @@
 }
 
 .song-drawer {
-  @apply w-96;
+  @apply w-80;
   @apply overflow-hidden;
   @apply duration-500;
-  @apply rounded-l-lg;
+  transition-timing-function: cubic-bezier(0, 0, 0.5, 1);
+  @apply rounded-l-xl;
   background-color: theme('colors.gray.200');
-  transition-timing-function: cubic-bezier(0, 0, 0.5, 1)
 }
 
 .song-drawer-closed {
   @apply w-0;
+}
+
+.song-drawer-contents {
+  @apply p-3;
+  @apply min-h-28;
 }

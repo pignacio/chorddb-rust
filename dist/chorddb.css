@@ -2059,16 +2059,12 @@ input.tab:checked + .tab-content,
   visibility: hidden;
 }
 
-.fixed {
-  position: fixed;
+.sticky {
+  position: sticky;
 }
 
-.relative {
-  position: relative;
-}
-
-.right-\[max\(0px\2c calc\(50\%-45rem\)\)\] {
-  right: max(0px,calc(50% - 45rem));
+.top-10 {
+  top: 2.5rem;
 }
 
 .col-span-2 {
@@ -2104,6 +2100,11 @@ input.tab:checked + .tab-content,
   height: 16rem;
 }
 
+.h-fit {
+  height: -moz-fit-content;
+  height: fit-content;
+}
+
 .w-32 {
   width: 8rem;
 }
@@ -2112,12 +2113,8 @@ input.tab:checked + .tab-content,
   max-width: 56rem;
 }
 
-.flex-1 {
-  flex: 1 1 0%;
-}
-
-.shrink-0 {
-  flex-shrink: 0;
+.flex-auto {
+  flex: 1 1 auto;
 }
 
 .list-inside {
@@ -2167,6 +2164,7 @@ input.tab:checked + .tab-content,
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 1.2rem;
   line-height: 1.3rem;
+  /*background-color: theme('colors.gray.100');*/
 }
 
 .tablature .chord {
@@ -2189,15 +2187,20 @@ input.tab:checked + .tab-content,
 }
 
 .song-drawer {
-  width: 24rem;
+  width: 20rem;
   overflow: hidden;
   transition-duration: 500ms;
-  border-top-left-radius: 0.5rem;
-  border-bottom-left-radius: 0.5rem;
-  background-color: #e5e7eb;
   transition-timing-function: cubic-bezier(0, 0, 0.5, 1);
+  border-top-left-radius: 0.75rem;
+  border-bottom-left-radius: 0.75rem;
+  background-color: #e5e7eb;
 }
 
 .song-drawer-closed {
   width: 0px;
+}
+
+.song-drawer-contents {
+  padding: 0.75rem;
+  min-height: 7rem;
 }

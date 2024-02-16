@@ -15,7 +15,10 @@ export function renderInSingleLine(bits: RenderBit[]): HTMLElement {
             html.innerHTML += "&nbsp;"
             currentPosition++
         }
-        html.appendChild(bit.html)
+        console.log("Appending!", html, bit.html);
+        var res = html.appendChild(bit.html);
+        console.log("Appended!", html, res)
+
         currentPosition += bit.size
     }
     return html;
