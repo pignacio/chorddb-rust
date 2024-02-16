@@ -14,16 +14,38 @@
 
 .tablature {
   @apply font-mono;
-  background-color: #eee;
   font-size: 1.2rem;
   line-height: 1.3rem;
 }
 
 .tablature .chord {
-  color: red;
+  color: theme('colors.red.500');
   font-weight: bold;
 }
 
+.tablature .chord-selected {
+  background-color: theme('colors.red.800');
+  color: theme('colors.white')
+}
+
 .tablature .fingering {
-  color: blue;
+  color: theme('colors.blue.600');
+}
+
+.tablature .fingering-selected {
+  background-color: theme('colors.blue.900');
+  color: theme('colors.white')
+}
+
+.song-drawer {
+  @apply w-96;
+  @apply overflow-hidden;
+  @apply duration-500;
+  @apply rounded-l-lg;
+  background-color: theme('colors.gray.200');
+  transition-timing-function: cubic-bezier(0, 0, 0.5, 1)
+}
+
+.song-drawer-closed {
+  @apply w-0;
 }

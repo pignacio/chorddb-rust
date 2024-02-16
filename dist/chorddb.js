@@ -78,8 +78,10 @@ var buildLine = function(line) {
         position: linebit.position,
         size: chord.chord.length
       });
+      var fingering = createSpan("fingering", "(" + chord.fingering + ")");
+      fingering.addEventListener("click", () => updateSongDrawer(true), false);
       currentLine.addBit({
-        html: createSpan("fingering", "(" + chord.fingering + ")"),
+        html: fingering,
         position: linebit.position + chord.chord.length,
         size: chord.fingering.length + 2
       });
@@ -95,11 +97,27 @@ var buildLine = function(line) {
   let res = lines.map((line2) => renderInSingleLine(line2.bits));
   return res;
 };
+var toggleSongDrawer = function() {
+  var checkbox = document.getElementById("song-drawer-checkbox");
+  checkbox.checked = !checkbox.checked;
+  updateSongDrawer(checkbox.checked);
+};
+var updateSongDrawer = function(isOpen) {
+  console.log("updateSongDrawer: " + isOpen);
+  document.getElementById("song-drawer-checkbox").checked = isOpen;
+  var drawer = document.getElementById("drawer");
+  if (isOpen) {
+    drawer.classList.remove("song-drawer-closed");
+  } else {
+    drawer.classList.add("song-drawer-closed");
+  }
+};
 var BitType;
 (function(BitType2) {
   BitType2["Text"] = "text";
   BitType2["Chord"] = "chord";
 })(BitType || (BitType = {}));
+window.buildLines = buildLines;
 
 class RenderLine {
   bits = [];
@@ -109,4 +127,4 @@ class RenderLine {
     this.lastPosition = this.lastPosition == undefined ? bit.position : Math.min(this.lastPosition, bit.position);
   }
 }
-window.buildLines = buildLines;
+window.toggleSongDrawer = toggleSongDrawer;

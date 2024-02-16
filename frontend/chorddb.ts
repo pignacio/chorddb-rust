@@ -37,6 +37,7 @@ function buildLines(contentId: string, lines: LineBit[][]) {
 
     content?.appendChild(pre)
 }
+window.buildLines = buildLines
 
 function getBitSize(bit: LineBit) {
     if (bit.type == BitType.Chord) {
@@ -65,7 +66,7 @@ function buildLine(line: LineBit[]): HTMLElement[] {
     bits.sort((a, b) => b.position - a.position)
 
     let lines: RenderLine[] = [new RenderLine()]
-    
+
     for (let linebit of bits) {
         let lineIndex : number = 0;
         let lastBitPosition = linebit.position + getBitSize(linebit)
@@ -94,8 +95,11 @@ function buildLine(line: LineBit[]): HTMLElement[] {
                 position: linebit.position,
                 size: chord.chord.length,
             })
+            var fingering = createSpan("fingering", "(" + chord.fingering + ")")
+            fingering.addEventListener('click', () => updateSongDrawer(true), false);
+
             currentLine.addBit({
-                html: createSpan("fingering", "(" + chord.fingering + ")"),
+                html: fingering,
                 position: linebit.position + chord.chord.length,
                 size: chord.fingering.length + 2,
             })
@@ -114,4 +118,22 @@ function buildLine(line: LineBit[]): HTMLElement[] {
     return res
 }
 
-window.buildLines = buildLines
+
+function toggleSongDrawer() {
+  var checkbox = document.getElementById("song-drawer-checkbox");
+  checkbox.checked = !checkbox.checked
+  updateSongDrawer(checkbox.checked)
+}
+window.toggleSongDrawer = toggleSongDrawer
+
+
+function updateSongDrawer(isOpen: boolean) {
+  console.log("updateSongDrawer: " + isOpen);
+  document.getElementById("song-drawer-checkbox").checked = isOpen;
+  var drawer = document.getElementById("drawer");
+  if (isOpen) {
+    drawer.classList.remove("song-drawer-closed")
+  } else {
+    drawer.classList.add("song-drawer-closed")
+  }
+}
