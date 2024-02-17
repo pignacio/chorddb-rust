@@ -14,6 +14,7 @@
 
 .tablature {
   @apply font-mono;
+  @apply whitespace-nowrap;
   font-size: 1.2rem;
   line-height: 1.3rem;
   /*background-color: theme('colors.gray.100');*/
@@ -41,6 +42,7 @@
 .song-drawer {
   @apply w-80;
   @apply overflow-hidden;
+  @apply whitespace-nowrap;
   @apply duration-500;
   transition-timing-function: cubic-bezier(0, 0, 0.5, 1);
   @apply rounded-l-xl;

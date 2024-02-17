@@ -2,11 +2,22 @@ import { type RenderBit, renderInSingleLine, createSpan } from "./render"
 
 // Public interface for HTML
 class ChordDB {
-  chords: {chord: HTMLElement, fingering: HTMLElement}[] = [];
+  chordCount: number = 0;
   selectedChord: number = 0;
 
   initTablature(lines: LineBit[][]) {
     this.buildLines("tablature", lines);
+    document.querySelectorAll("[data-fingering-index]").forEach(f => {
+      console.log("Adding listener for ", f);
+      f.addEventListener('click', e => {
+        if (!(e.target instanceof HTMLElement)) {
+          return;
+        }
+        let index = e.target.dataset.fingeringIndex;
+        console.log("Click!", e, e.target, index, this);
+        this.updateSongDrawer(index != null ? parseInt(index) : null, true);
+      }, false);
+    });
   }
 
   buildLines(contentId: string, lines: LineBit[][]) {
@@ -41,17 +52,22 @@ class ChordDB {
 
     // Deselect current chord if needed
     if (!isOpen || (chord != null && chord != this.selectedChord)) {
-      let selectedChord = this.chords[this.selectedChord];
-      selectedChord.chord.classList.remove("chord-selected");
-      selectedChord.fingering.classList.remove("fingering-selected");
+      findChord(this.selectedChord)?.classList?.remove("chord-selected");
+      findFingering(this.selectedChord)?.classList?.remove("fingering-selected");
     }
 
     // Select current chord
     if (chord != null) {
-      this.selectedChord = chord % this.chords.length;
-      let selectedChord = this.chords[this.selectedChord];
-      selectedChord.chord.classList.add("chord-selected");
-      selectedChord.fingering.classList.add("fingering-selected");
+      this.selectedChord = chord % this.chordCount;
+    }
+    if (isOpen) {
+      findChord(this.selectedChord)?.classList?.add("chord-selected");
+      let fingering = findFingering(this.selectedChord);
+      if (fingering != null) {
+        fingering.classList.add("fingering-selected");
+        document.getElementById("current-chord").innerHTML = fingering.dataset.fingeringChord ?? "UNKNOWN";
+    }
+
     }
 
     // Update checkbox
@@ -70,21 +86,21 @@ class ChordDB {
     }
   }
 
-  // getChords(chord: string): [HTMLElement, HTMLElement][] {
-  //   let chords = this.chords[chord];
-  //   if (chords == undefined) {
-  //     chords = []
-  //     this.chords[chord] = chords;
-  //   }
-  //   return chords;
-  // }
-
   buildLine(line: LineBit[]): HTMLElement[] {
-    let bits = [...line]
-    bits.sort((a, b) => b.position - a.position)
+    let bits = [...line];
+    bits.sort((a, b) => a.position - b.position);
+
+    // Assign indices in forward order
+    for (let bit of bits) {
+      if (bit.chord != undefined) {
+        bit.chordIndex = this.chordCount++;
+      }
+    }
+
+    // Perform pre-rendering and overlap calculations in reverse order
+    bits.reverse();
 
     let lines: RenderLine[] = [new RenderLine()]
-
     for (let linebit of bits) {
       let lineIndex : number = 0;
       let lastBitPosition = linebit.position + getBitSize(linebit)
@@ -108,29 +124,38 @@ class ChordDB {
       let currentLine = lines[lineIndex]
       let chord = linebit.chord;
       if (chord != undefined) {
+        if (linebit.chordIndex == undefined) {
+          console.error("Missing chordIndex", linebit);
+          continue;
+        }
         let chordSpan = createSpan("chord", chord.chord);
+        chordSpan.dataset.chordIndex = linebit.chordIndex.toString();
+
+        let fingering = createSpan("fingering", "(" + chord.fingering + ")");
+        fingering.dataset.fingeringIndex = linebit.chordIndex.toString();
+        fingering.dataset.fingeringChord = chord.chord;
+
+        // console.log("Adding listener for ", chord, linebit.chordIndex, fingering);
+        // fingering.addEventListener('click', e => {
+        //   if (!(e.target instanceof HTMLElement)) {
+        //     return;
+        //   }
+        //   let index = e.target.dataset.fingeringIndex;
+        //   console.log("Click!", e, e.target, index, this);
+        //   this.updateSongDrawer(index != null ? parseInt(index) : null, true);
+        // }, false);
+
+
         currentLine.addBit({
           html: chordSpan,
           position: linebit.position,
           size: chord.chord.length,
         })
-        let fingering = createSpan("fingering", "(" + chord.fingering + ")");
-        let chordIndex = this.chords.length;
-        console.log("Adding listenr for ", chord, chordIndex, fingering);
-        fingering.dataset.index = chordIndex.toString();
-        fingering.addEventListener('click', e => {
-          console.log("Click!", e, e.target, chordIndex, this);
-          this.updateSongDrawer(e.target.dataset.index, true);
-        }, false);
-
-        this.chords.push({chord: chordSpan, fingering: fingering});
-
         currentLine.addBit({
           html: fingering,
           position: linebit.position + chord.chord.length,
           size: chord.fingering.length + 2,
         })
-        console.log("Added to line!", fingering, currentLine);
       } else {
         currentLine.addBit({
           html: createSpan("lyric", linebit.text),
@@ -141,6 +166,7 @@ class ChordDB {
 
     }
 
+    // Finally render each line in forward order
     lines.reverse()
     let res = lines.map(line => renderInSingleLine(line.bits))
     return res
@@ -170,8 +196,7 @@ interface LineBit {
   position: number,
   text: string,
   chord: Chord | undefined,
-
-
+  chordIndex: number | undefined,
 }
 
 function getBitSize(bit: LineBit) {
@@ -201,3 +226,20 @@ function isInput(element: HTMLElement | null): element is HTMLInputElement {
   return element != null && element != undefined && element instanceof HTMLInputElement;
 }
 
+function findChord(index: number): HTMLElement | null {
+  let element =  document.querySelector('[data-chord-index="' + index + '"]')
+  if (element != null && element instanceof HTMLElement) {
+    return element;
+  }
+  console.log("Could not find chord for index", index);
+  return null;
+}
+
+function findFingering(index: number): HTMLElement | null {
+  let element = document.querySelector('[data-fingering-index="' + index + '"]');
+  if (element != null && element instanceof HTMLElement) {
+    return element;
+  }
+  console.log("Could not find chord for index", index);
+  return null;
+}

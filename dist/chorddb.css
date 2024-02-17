@@ -2146,6 +2146,10 @@ input.tab:checked + .tab-content,
   stroke: currentColor;
 }
 
+.p-4 {
+  padding: 1rem;
+}
+
 .font-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
@@ -2162,6 +2166,7 @@ input.tab:checked + .tab-content,
 
 .tablature {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: nowrap;
   font-size: 1.2rem;
   line-height: 1.3rem;
   /*background-color: theme('colors.gray.100');*/
@@ -2189,6 +2194,7 @@ input.tab:checked + .tab-content,
 .song-drawer {
   width: 20rem;
   overflow: hidden;
+  white-space: nowrap;
   transition-duration: 500ms;
   transition-timing-function: cubic-bezier(0, 0, 0.5, 1);
   border-top-left-radius: 0.75rem;
