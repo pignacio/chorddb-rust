@@ -19,6 +19,7 @@ use crate::{
     Opt,
 };
 
+mod chord;
 mod home;
 mod not_found;
 mod song;
@@ -35,6 +36,7 @@ pub async fn run_server(opt: Opt, state: AppState) {
         .route("/", get(home::home))
         .route("/songs", post(song::add_song))
         .route("/songs/:id", get(song::song))
+        .route("/chords/:instrument/:chord", get(chord::chords))
         .nest_service("/static", ServeDir::new(opt.static_dir))
         .fallback(not_found::not_found)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))

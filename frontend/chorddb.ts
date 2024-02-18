@@ -3,18 +3,18 @@ import { type RenderBit, renderInSingleLine, createSpan } from "./render"
 // Public interface for HTML
 class ChordDB {
   chordCount: number = 0;
-  selectedChord: number = 0;
+  selectedChordIndex: number = 0;
+  selectedFingeringIndex: number = 0;
+  cachedFingerings: {[key:string]: string[];} = {};
 
   initTablature(lines: LineBit[][]) {
     this.buildLines("tablature", lines);
     document.querySelectorAll("[data-fingering-index]").forEach(f => {
-      console.log("Adding listener for ", f);
       f.addEventListener('click', e => {
         if (!(e.target instanceof HTMLElement)) {
           return;
         }
         let index = e.target.dataset.fingeringIndex;
-        console.log("Click!", e, e.target, index, this);
         this.updateSongDrawer(index != null ? parseInt(index) : null, true);
       }, false);
     });
@@ -24,6 +24,7 @@ class ChordDB {
     let content = document.getElementById(contentId);
     if (content == undefined) {
       console.error("Could not find element with id " + contentId);
+      return;
     }
     let pre = document.createElement("div")
     pre.classList.add("tablature")
@@ -32,42 +33,49 @@ class ChordDB {
     for (let line of lines) {
       this.buildLine(line).forEach(html => {
         pre.appendChild(html)
-        pre.appendChild(document.createElement("br"))
+        pre.append("\n")
       })
     }
 
     content?.appendChild(pre)
   }
 
-  // toggleSongDrawer() {
-  //   var checkbox = document.getElementById("song-drawer-checkbox");
-  //   if (isInput(checkbox)) {
-  //     checkbox.checked = !checkbox.checked
-  //     this.updateSongDrawer(checkbox.checked ? this.firstChord : null);
-  //   }
-  // }
-
-  updateSongDrawer(chord: number | null, isOpen: boolean) {
-    console.log("updateSongDrawer:", chord, isOpen);
-
+  updateSongDrawer(chordIndex: number | null, isOpen: boolean) {
     // Deselect current chord if needed
-    if (!isOpen || (chord != null && chord != this.selectedChord)) {
-      findChord(this.selectedChord)?.classList?.remove("chord-selected");
-      findFingering(this.selectedChord)?.classList?.remove("fingering-selected");
+    if (!isOpen || (chordIndex != null && chordIndex != this.selectedChordIndex)) {
+      findChord(this.selectedChordIndex)?.classList?.remove("chord-selected");
+      findFingering(this.selectedChordIndex)?.classList?.remove("fingering-selected");
     }
 
-    // Select current chord
-    if (chord != null) {
-      this.selectedChord = chord % this.chordCount;
-    }
     if (isOpen) {
-      findChord(this.selectedChord)?.classList?.add("chord-selected");
-      let fingering = findFingering(this.selectedChord);
+      chordIndex = positiveModule(chordIndex ?? 0, this.chordCount);
+      this.selectedChordIndex = chordIndex;
+      findChord(this.selectedChordIndex)?.classList?.add("chord-selected");
+      let fingering = findFingering(this.selectedChordIndex);
       if (fingering != null) {
         fingering.classList.add("fingering-selected");
-        document.getElementById("current-chord").innerHTML = fingering.dataset.fingeringChord ?? "UNKNOWN";
-    }
-
+        let currentFingering = fingering.dataset.fingering ?? "XXXXXX";
+        let chord = fingering.dataset.chord ?? "UNKNOWN";
+        let currentChord = document.getElementById("current-chord");
+        if (!currentChord) {
+          console.error("Could not find #current-chord")
+          return;
+        }
+        currentChord.innerHTML = chord;
+        this.getFingerings(chord)
+          .then(ff => {
+            if (this.selectedChordIndex != chordIndex) {
+              // Selected chord has changed. Ignore update
+              return;
+            }
+            if (!ff.includes(currentFingering)) {
+              ff.unshift(currentFingering);
+            }
+            this.selectedFingeringIndex = ff.indexOf(currentFingering);
+            document.getElementById("chord-options").innerHTML = JSON.stringify(ff)
+            this.updateCurrentFingering(0);
+          });
+      }
     }
 
     // Update checkbox
@@ -84,6 +92,19 @@ class ChordDB {
     } else {
       drawer.classList.add("song-drawer-closed")
     }
+  }
+
+  updateCurrentFingering(diff: number) {
+    let chord = findFingering(this.selectedChordIndex)?.dataset?.chord;
+    if (!chord) {
+      console.error("Could not find chord for index", this.selectedChordIndex)
+      return;
+    }
+    this.selectedFingeringIndex = positiveModule(this.selectedFingeringIndex + diff, this.cachedFingerings[chord].length);
+
+    let fingering = this.cachedFingerings[chord][this.selectedFingeringIndex];
+    document.getElementById("current-fingering").innerHTML = fingering;
+    document.querySelectorAll(".fingering[data-chord='" + chord + "']").forEach(elem => elem.innerHTML = "(" + fingering + ")");
   }
 
   buildLine(line: LineBit[]): HTMLElement[] {
@@ -133,18 +154,8 @@ class ChordDB {
 
         let fingering = createSpan("fingering", "(" + chord.fingering + ")");
         fingering.dataset.fingeringIndex = linebit.chordIndex.toString();
-        fingering.dataset.fingeringChord = chord.chord;
-
-        // console.log("Adding listener for ", chord, linebit.chordIndex, fingering);
-        // fingering.addEventListener('click', e => {
-        //   if (!(e.target instanceof HTMLElement)) {
-        //     return;
-        //   }
-        //   let index = e.target.dataset.fingeringIndex;
-        //   console.log("Click!", e, e.target, index, this);
-        //   this.updateSongDrawer(index != null ? parseInt(index) : null, true);
-        // }, false);
-
+        fingering.dataset.chord = chord.chord;
+        fingering.dataset.fingering = chord.fingering;
 
         currentLine.addBit({
           html: chordSpan,
@@ -170,6 +181,16 @@ class ChordDB {
     lines.reverse()
     let res = lines.map(line => renderInSingleLine(line.bits))
     return res
+  }
+
+  async getFingerings(chord: string) {
+    let cached = this.cachedFingerings[chord];
+    if (cached != null) {
+      return cached;
+    }
+    let fingerings: string[] = await fetch("/chords/GUITAR_STANDARD/" + chord).then(r => r.json());
+    this.cachedFingerings[chord]  = fingerings;
+    return fingerings;
   }
 }
 
@@ -227,19 +248,30 @@ function isInput(element: HTMLElement | null): element is HTMLInputElement {
 }
 
 function findChord(index: number): HTMLElement | null {
-  let element =  document.querySelector('[data-chord-index="' + index + '"]')
-  if (element != null && element instanceof HTMLElement) {
-    return element;
+  let element = findHtmlElement('[data-chord-index="' + index + '"]')
+  if (!element) {
+    console.error("Could not find chord for index", index);
   }
-  console.log("Could not find chord for index", index);
-  return null;
+  return element;
 }
 
 function findFingering(index: number): HTMLElement | null {
-  let element = document.querySelector('[data-fingering-index="' + index + '"]');
+  let element = findHtmlElement('[data-fingering-index="' + index + '"]');
+  if (!element) {
+    console.error("Could not find chord for index", index);
+  }
+  return element;
+}
+
+function findHtmlElement(query: string): HTMLElement | null {
+  let element = document.querySelector(query);
   if (element != null && element instanceof HTMLElement) {
     return element;
   }
-  console.log("Could not find chord for index", index);
   return null;
+}
+
+function positiveModule(value: number, modulus: number) {
+  let result = value % modulus;
+  return result < 0 ? result + modulus : result;
 }
