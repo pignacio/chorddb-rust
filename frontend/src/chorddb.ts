@@ -1,11 +1,12 @@
+import { ChordSelector, FingeringUpdate } from "./chord_selector";
 import { type RenderBit, renderInSingleLine, createSpan } from "./render"
+import { findOrFail } from "./utils";
 
 // Public interface for HTML
 class ChordDB {
   chordCount: number = 0;
   selectedChordIndex: number = 0;
-  selectedFingeringIndex: number = 0;
-  cachedFingerings: {[key:string]: string[];} = {};
+  selector: ChordSelector;
 
   initTablature(lines: LineBit[][]) {
     this.buildLines("tablature", lines);
@@ -18,6 +19,7 @@ class ChordDB {
         this.updateSongDrawer(index != null ? parseInt(index) : null, true);
       }, false);
     });
+    this.selector = new ChordSelector(findOrFail("#chord-selector", document), this.updateFingering)
   }
 
   buildLines(contentId: string, lines: LineBit[][]) {
@@ -62,19 +64,7 @@ class ChordDB {
           return;
         }
         currentChord.innerHTML = chord;
-        this.getFingerings(chord)
-          .then(ff => {
-            if (this.selectedChordIndex != chordIndex) {
-              // Selected chord has changed. Ignore update
-              return;
-            }
-            if (!ff.includes(currentFingering)) {
-              ff.unshift(currentFingering);
-            }
-            this.selectedFingeringIndex = ff.indexOf(currentFingering);
-            document.getElementById("chord-options").innerHTML = JSON.stringify(ff)
-            this.updateCurrentFingering(0);
-          });
+        this.selector.load(chord, currentFingering);
       }
     }
 
@@ -94,17 +84,8 @@ class ChordDB {
     }
   }
 
-  updateCurrentFingering(diff: number) {
-    let chord = findFingering(this.selectedChordIndex)?.dataset?.chord;
-    if (!chord) {
-      console.error("Could not find chord for index", this.selectedChordIndex)
-      return;
-    }
-    this.selectedFingeringIndex = positiveModule(this.selectedFingeringIndex + diff, this.cachedFingerings[chord].length);
-
-    let fingering = this.cachedFingerings[chord][this.selectedFingeringIndex];
-    document.getElementById("current-fingering").innerHTML = fingering;
-    document.querySelectorAll(".fingering[data-chord='" + chord + "']").forEach(elem => elem.innerHTML = "(" + fingering + ")");
+  updateFingering(event: FingeringUpdate) {
+    document.querySelectorAll(".fingering[data-chord='" + event.chord + "']").forEach(elem => elem.innerHTML = "(" + event.fingering + ")");
   }
 
   buildLine(line: LineBit[]): HTMLElement[] {
@@ -181,16 +162,6 @@ class ChordDB {
     lines.reverse()
     let res = lines.map(line => renderInSingleLine(line.bits))
     return res
-  }
-
-  async getFingerings(chord: string) {
-    let cached = this.cachedFingerings[chord];
-    if (cached != null) {
-      return cached;
-    }
-    let fingerings: string[] = await fetch("/chords/GUITAR_STANDARD/" + chord).then(r => r.json());
-    this.cachedFingerings[chord]  = fingerings;
-    return fingerings;
   }
 }
 

@@ -1,4 +1,64 @@
-// render.ts
+// src/utils.ts
+function findOrFail(selector, source) {
+  let result = source.querySelector(selector);
+  if (!result) {
+    throw new Error("Could not find element for selector '" + selector + "' and source " + source);
+  }
+  return result;
+}
+function positiveModule(value, modulus) {
+  let result = value % modulus;
+  return result < 0 ? result + modulus : result;
+}
+
+// src/chord_selector.ts
+class ChordSelector {
+  root;
+  display;
+  spinner;
+  onChange;
+  currentChord = "none";
+  selectedFingeringIndex = 0;
+  cachedFingerings = {};
+  constructor(element, onChange) {
+    this.root = element;
+    this.display = findOrFail(".selector-display", this.root);
+    this.spinner = findOrFail(".selector-spinner", this.root);
+    this.onChange = onChange;
+    findOrFail(".next-fingering", this.root).addEventListener("click", (_e) => this.updateSelection(1));
+    findOrFail(".previous-fingering", this.root).addEventListener("click", (_e) => this.updateSelection(-1));
+  }
+  async load(chord, currentFingering) {
+    this.currentChord = chord;
+    let fingerings = this.cachedFingerings[chord];
+    if (fingerings == null) {
+      this.display.innerHTML = "";
+      this.display.classList.add("hidden");
+      this.spinner.classList.remove("hidden");
+      fingerings = await fetch("/chords/GUITAR_STANDARD/" + chord).then((r) => r.json());
+      this.cachedFingerings[chord] = fingerings;
+      if (this.currentChord != chord) {
+        return;
+      }
+    }
+    if (!fingerings.includes(currentFingering)) {
+      fingerings.unshift(currentFingering);
+    }
+    this.selectedFingeringIndex = fingerings.indexOf(currentFingering);
+    this.spinner.classList.add("hidden");
+    this.display.innerHTML = currentFingering;
+    this.display.classList.remove("hidden");
+  }
+  updateSelection(diff) {
+    let chordFingerings = this.cachedFingerings[this.currentChord];
+    this.selectedFingeringIndex = positiveModule(this.selectedFingeringIndex + diff, chordFingerings.length);
+    let fingering = chordFingerings[this.selectedFingeringIndex];
+    this.display.innerHTML = fingering;
+    this.onChange({ chord: this.currentChord, fingering });
+  }
+}
+
+// src/render.ts
 function renderInSingleLine(bits) {
   let html = createSpan("line");
   bits.sort((a, b) => a.position - b.position);
@@ -22,7 +82,7 @@ function createSpan(cls, inner) {
   return span;
 }
 
-// chorddb.ts
+// src/chorddb.ts
 var getBitSize = function(bit) {
   if (bit.type == BitType.Chord) {
     let chord = bit.chord;
@@ -58,7 +118,7 @@ var findHtmlElement = function(query) {
   }
   return null;
 };
-var positiveModule = function(value, modulus) {
+var positiveModule2 = function(value, modulus) {
   let result = value % modulus;
   return result < 0 ? result + modulus : result;
 };
@@ -66,8 +126,7 @@ var positiveModule = function(value, modulus) {
 class ChordDB {
   chordCount = 0;
   selectedChordIndex = 0;
-  selectedFingeringIndex = 0;
-  cachedFingerings = {};
+  selector;
   initTablature(lines) {
     this.buildLines("tablature", lines);
     document.querySelectorAll("[data-fingering-index]").forEach((f) => {
@@ -79,6 +138,7 @@ class ChordDB {
         this.updateSongDrawer(index != null ? parseInt(index) : null, true);
       }, false);
     });
+    this.selector = new ChordSelector(findOrFail("#chord-selector", document), this.updateFingering);
   }
   buildLines(contentId, lines) {
     let content = document.getElementById(contentId);
@@ -103,7 +163,7 @@ class ChordDB {
       findFingering(this.selectedChordIndex)?.classList?.remove("fingering-selected");
     }
     if (isOpen) {
-      chordIndex = positiveModule(chordIndex ?? 0, this.chordCount);
+      chordIndex = positiveModule2(chordIndex ?? 0, this.chordCount);
       this.selectedChordIndex = chordIndex;
       findChord(this.selectedChordIndex)?.classList?.add("chord-selected");
       let fingering = findFingering(this.selectedChordIndex);
@@ -117,17 +177,7 @@ class ChordDB {
           return;
         }
         currentChord.innerHTML = chord;
-        this.getFingerings(chord).then((ff) => {
-          if (this.selectedChordIndex != chordIndex) {
-            return;
-          }
-          if (!ff.includes(currentFingering)) {
-            ff.unshift(currentFingering);
-          }
-          this.selectedFingeringIndex = ff.indexOf(currentFingering);
-          document.getElementById("chord-options").innerHTML = JSON.stringify(ff);
-          this.updateCurrentFingering(0);
-        });
+        this.selector.load(chord, currentFingering);
       }
     }
     var checkbox = document.getElementById("song-drawer-checkbox");
@@ -143,16 +193,8 @@ class ChordDB {
       drawer.classList.add("song-drawer-closed");
     }
   }
-  updateCurrentFingering(diff) {
-    let chord = findFingering(this.selectedChordIndex)?.dataset?.chord;
-    if (!chord) {
-      console.error("Could not find chord for index", this.selectedChordIndex);
-      return;
-    }
-    this.selectedFingeringIndex = positiveModule(this.selectedFingeringIndex + diff, this.cachedFingerings[chord].length);
-    let fingering = this.cachedFingerings[chord][this.selectedFingeringIndex];
-    document.getElementById("current-fingering").innerHTML = fingering;
-    document.querySelectorAll(".fingering[data-chord='" + chord + "']").forEach((elem) => elem.innerHTML = "(" + fingering + ")");
+  updateFingering(event) {
+    document.querySelectorAll(".fingering[data-chord='" + event.chord + "']").forEach((elem) => elem.innerHTML = "(" + event.fingering + ")");
   }
   buildLine(line) {
     let bits = [...line];
@@ -214,15 +256,6 @@ class ChordDB {
     lines.reverse();
     let res = lines.map((line2) => renderInSingleLine(line2.bits));
     return res;
-  }
-  async getFingerings(chord) {
-    let cached = this.cachedFingerings[chord];
-    if (cached != null) {
-      return cached;
-    }
-    let fingerings = await fetch("/chords/GUITAR_STANDARD/" + chord).then((r) => r.json());
-    this.cachedFingerings[chord] = fingerings;
-    return fingerings;
   }
 }
 window.chorddb = new ChordDB;
