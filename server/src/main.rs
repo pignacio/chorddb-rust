@@ -9,7 +9,6 @@ use clap::Parser;
 #[tokio::main]
 async fn main() {
     let opt = Opt::parse();
-
     // Setup logging & RUST_LOG from args
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var(
