@@ -1,4 +1,4 @@
-import { ChordSelector, FingeringUpdate } from "./chord_selector";
+import { FingeringSelector, FingeringUpdate } from "./fingering_selector";
 import { type RenderBit, renderInSingleLine, createSpan } from "./render"
 import { findOrFail } from "./utils";
 
@@ -6,7 +6,7 @@ import { findOrFail } from "./utils";
 class ChordDB {
   chordCount: number = 0;
   selectedChordIndex: number = 0;
-  selector: ChordSelector;
+  selector: FingeringSelector;
 
   initTablature(lines: LineBit[][]) {
     this.buildLines("tablature", lines);
@@ -19,7 +19,7 @@ class ChordDB {
         this.updateSongDrawer(index != null ? parseInt(index) : null, true);
       }, false);
     });
-    this.selector = new ChordSelector(findOrFail("#chord-selector", document), this.updateFingering)
+    this.selector = new FingeringSelector(findOrFail("#fingering-selector", document), this.updateFingering)
   }
 
   buildLines(contentId: string, lines: LineBit[][]) {

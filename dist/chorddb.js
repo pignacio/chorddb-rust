@@ -11,8 +11,8 @@ function positiveModule(value, modulus) {
   return result < 0 ? result + modulus : result;
 }
 
-// src/chord_selector.ts
-class ChordSelector {
+// src/fingering_selector.ts
+class FingeringSelector {
   root;
   display;
   spinner;
@@ -46,14 +46,20 @@ class ChordSelector {
     }
     this.selectedFingeringIndex = fingerings.indexOf(currentFingering);
     this.spinner.classList.add("hidden");
-    this.display.innerHTML = currentFingering;
+    this.updateDisplay();
     this.display.classList.remove("hidden");
   }
   updateSelection(diff) {
     let chordFingerings = this.cachedFingerings[this.currentChord];
     this.selectedFingeringIndex = positiveModule(this.selectedFingeringIndex + diff, chordFingerings.length);
     let fingering = chordFingerings[this.selectedFingeringIndex];
-    this.display.innerHTML = fingering;
+    this.updateDisplay();
+    this.onChange({ chord: this.currentChord, fingering });
+  }
+  updateDisplay() {
+    let chordFingerings = this.cachedFingerings[this.currentChord];
+    let fingering = chordFingerings[this.selectedFingeringIndex];
+    this.display.innerHTML = fingering + "<br>" + (this.selectedFingeringIndex + 1) + " / " + chordFingerings.length;
     this.onChange({ chord: this.currentChord, fingering });
   }
 }
@@ -138,7 +144,7 @@ class ChordDB {
         this.updateSongDrawer(index != null ? parseInt(index) : null, true);
       }, false);
     });
-    this.selector = new ChordSelector(findOrFail("#chord-selector", document), this.updateFingering);
+    this.selector = new FingeringSelector(findOrFail("#fingering-selector", document), this.updateFingering);
   }
   buildLines(contentId, lines) {
     let content = document.getElementById(contentId);

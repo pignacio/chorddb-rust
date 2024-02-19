@@ -41,6 +41,7 @@
 
 .song-drawer {
   @apply w-80;
+  @apply max-w-80;
   @apply overflow-hidden;
   @apply whitespace-nowrap;
   @apply duration-500;

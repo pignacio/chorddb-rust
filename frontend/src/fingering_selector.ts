@@ -6,7 +6,7 @@ export interface FingeringUpdate {
 }
 
 
-export class ChordSelector {
+export class FingeringSelector {
   root: Element;
   display: Element;
   spinner: Element;
@@ -43,7 +43,7 @@ export class ChordSelector {
     }
     this.selectedFingeringIndex = fingerings.indexOf(currentFingering);
     this.spinner.classList.add("hidden");
-    this.display.innerHTML = currentFingering;
+    this.updateDisplay();
     this.display.classList.remove("hidden");
   }
 
@@ -51,7 +51,14 @@ export class ChordSelector {
     let chordFingerings = this.cachedFingerings[this.currentChord];
     this.selectedFingeringIndex = positiveModule(this.selectedFingeringIndex + diff, chordFingerings.length);
     let fingering = chordFingerings[this.selectedFingeringIndex];
-    this.display.innerHTML = fingering;
+    this.updateDisplay();
+    this.onChange({chord: this.currentChord, fingering: fingering })
+  }
+
+  updateDisplay() {
+    let chordFingerings = this.cachedFingerings[this.currentChord];
+    let fingering = chordFingerings[this.selectedFingeringIndex];
+    this.display.innerHTML = fingering + "<br>" + (this.selectedFingeringIndex + 1) + " / " + chordFingerings.length;
     this.onChange({chord: this.currentChord, fingering: fingering })
   }
 }
