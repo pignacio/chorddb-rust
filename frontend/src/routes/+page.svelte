@@ -1,22 +1,17 @@
 <script lang="ts">
-  import FingeringSelector from "$lib/FingeringSelector.svelte";
+  import type { PageData } from "./$types";
+
+  export let data: PageData;
+
 </script>
 
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
-
-<h1 class="text-3xl font-bold underline">
-  Hello world!
-</h1>
-<div class="btn"></div>
-<div class="w-96">
-  <FingeringSelector fingerings={["111", "222"]} onChange={(ev) => console.log(ev.previous + " => " + ev.current)}/>
-</div>
-
-<style lang="postcss">
-  :global(html) {
-  background-color: theme(colors.gray.100);
-  }
-</style>
+<h1>Songs</h1>
 
 
+<ul class="text-xl list-inside list-image-[url($lib/assets/musical-note.svg)]">
+  {#each data.songs as { id, author, title }}
+    <li>
+      <a href="/songs/{ id }">{ author } - { title }</a>
+    </li>
+  {/each}
+</ul>

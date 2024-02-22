@@ -4,7 +4,7 @@ use askama::Template;
 use axum::{
     extract::{Path, State},
     response::{Html, IntoResponse, Redirect},
-    Form,
+    Form, Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -166,4 +166,8 @@ fn serialize_bit(bit: &LineBit, chords: &dyn ChordRepository) -> LineBitModel {
             }),
         },
     }
+}
+
+pub async fn songs(State(AppState { songs, .. }): State<AppState>) -> impl IntoResponse {
+    Json(songs.all_songs())
 }
