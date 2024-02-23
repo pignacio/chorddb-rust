@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use askama::Template;
 use axum::{
@@ -8,12 +8,11 @@ use axum::{
     Form, Json,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::map;
 use uuid::Uuid;
 
 use crate::{
-    chord::finder::GUITAR_STANDARD,
-    parser::{parse_tablature, Line, LineBit},
+    chord::{finder::GUITAR_STANDARD, Chord},
+    parser::{parse_tablature, Comp, Line, LineBit},
     song::{ChordRepository, Song, SongHeader},
     web::not_found,
 };
@@ -32,7 +31,7 @@ struct LineBitModel {
     bit_type: String,
     position: usize,
     text: String,
-    chord: Option<ChordModel>,
+    chord: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -148,27 +147,20 @@ lazy_static! {
 
 fn serialize_bit(bit: &LineBit, chords: &dyn ChordRepository) -> LineBitModel {
     match &bit.comp {
-        crate::parser::Comp::Text(text) => LineBitModel {
+        Comp::Text(text) => LineBitModel {
             bit_type: "text".to_owned(),
             position: bit.position,
             text: text.clone(),
             chord: None,
         },
-        crate::parser::Comp::Chord {
+        Comp::Chord {
             chord,
             original_text,
         } => LineBitModel {
             bit_type: "chord".to_owned(),
             position: bit.position,
             text: original_text.clone(),
-            chord: Some(ChordModel {
-                chord: chord.text(),
-                fingering: chords
-                    .get_fingerings(&GUITAR_STANDARD, chord)
-                    .first()
-                    .map(|f| f.to_str())
-                    .unwrap_or("XXXXXX".to_owned()),
-            }),
+            chord: Some(chord.text()),
         },
     }
 }
@@ -182,6 +174,19 @@ struct SongModel {
     header: SongHeader,
     contents: String,
     tablature: Vec<Vec<LineBitModel>>,
+    fingerings: HashMap<String, String>,
+}
+
+fn extract_chords(tablature: Vec<Vec<LineBit>>) -> HashSet<Chord> {
+    tablature
+        .iter()
+        .flatten()
+        .map(|b| match b.comp {
+            Comp::Chord { chord, .. } => Some(chord),
+            _ => None,
+        })
+        .flatten()
+        .collect()
 }
 
 pub async fn api_song(
@@ -191,10 +196,30 @@ pub async fn api_song(
     return Uuid::parse_str(&id)
         .ok()
         .and_then(|song_id| songs.get_song(&song_id))
-        .map(|song| SongModel {
-            header: song.header().clone(),
-            contents: song.contents().into(),
-            tablature: get_tablature(&song, chords.as_ref()),
+        .map(|song| {
+            let tab = parse_tablature(song.contents());
+            let serialized_tab = tab
+                .iter()
+                .map(|l| serialize_line(l, chords.as_ref()))
+                .collect();
+
+            let fingerings: HashMap<String, String> = extract_chords(tab)
+                .iter()
+                .map(|c| {
+                    chords
+                        .get_fingerings(&GUITAR_STANDARD, &c)
+                        .first()
+                        .map(|f| (c.text(), f.to_str()))
+                })
+                .flatten()
+                .collect();
+
+            SongModel {
+                header: song.header().clone(),
+                contents: song.contents().into(),
+                tablature: serialized_tab,
+                fingerings,
+            }
         })
         .map(|m| Json(m))
         .ok_or(StatusCode::NOT_FOUND);

@@ -5,6 +5,7 @@ export async function load({ fetch, params }) {
   return {
     author: data.header.author,
     title: data.header.title,
-    tablature: data.tablature,
+    tablature: {lines: data.tablature},
+    fingerings: data.fingerings,
   }
 }
