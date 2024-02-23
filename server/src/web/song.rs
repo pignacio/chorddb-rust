@@ -3,16 +3,18 @@ use std::collections::HashMap;
 use askama::Template;
 use axum::{
     extract::{Path, State},
+    http::StatusCode,
     response::{Html, IntoResponse, Redirect},
     Form, Json,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::map;
 use uuid::Uuid;
 
 use crate::{
     chord::finder::GUITAR_STANDARD,
     parser::{parse_tablature, Line, LineBit},
-    song::{ChordRepository, Song},
+    song::{ChordRepository, Song, SongHeader},
     web::not_found,
 };
 
@@ -88,9 +90,12 @@ pub async fn song(
 }
 
 fn test(song: &Song, chords: &dyn ChordRepository) -> String {
+    serde_json::to_string(&get_tablature(song, chords)).unwrap()
+}
+
+fn get_tablature(song: &Song, chords: &dyn ChordRepository) -> Vec<Vec<LineBitModel>> {
     let tab = parse_tablature(song.contents());
-    let model: Vec<Vec<LineBitModel>> = tab.iter().map(|l| serialize_line(l, chords)).collect();
-    serde_json::to_string(&model).unwrap()
+    tab.iter().map(|l| serialize_line(l, chords)).collect()
 }
 
 fn serialize_line(line: &Line, chords: &dyn ChordRepository) -> Vec<LineBitModel> {
@@ -170,4 +175,27 @@ fn serialize_bit(bit: &LineBit, chords: &dyn ChordRepository) -> LineBitModel {
 
 pub async fn songs(State(AppState { songs, .. }): State<AppState>) -> impl IntoResponse {
     Json(songs.all_songs())
+}
+
+#[derive(Serialize)]
+struct SongModel {
+    header: SongHeader,
+    contents: String,
+    tablature: Vec<Vec<LineBitModel>>,
+}
+
+pub async fn api_song(
+    Path(id): Path<String>,
+    State(AppState { songs, chords, .. }): State<AppState>,
+) -> Result<impl IntoResponse, StatusCode> {
+    return Uuid::parse_str(&id)
+        .ok()
+        .and_then(|song_id| songs.get_song(&song_id))
+        .map(|song| SongModel {
+            header: song.header().clone(),
+            contents: song.contents().into(),
+            tablature: get_tablature(&song, chords.as_ref()),
+        })
+        .map(|m| Json(m))
+        .ok_or(StatusCode::NOT_FOUND);
 }
