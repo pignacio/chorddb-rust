@@ -2,7 +2,8 @@
   import type { FingeringChange } from "$lib/fingering_selector";
 
   export let fingerings: string[];
-  export let current: string = fingerings[0];
+  export let current: string = fingerings.length > 0 ? fingerings[0] : "";
+  export let chord: string;
   export let onChange: (ev: FingeringChange) => void = (_) => {};
 
   if (!fingerings.includes(current)) {
@@ -24,6 +25,8 @@
   }
 
 </script>
+
+<div class="my-4">Current chord: {chord}</div>
 
 <div id="fingering-selector" class="join flex w-full">
   <button class="btn join-item flex-none" on:click={() => { updateFingering(-1);}}>

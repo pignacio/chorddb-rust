@@ -175,3 +175,15 @@ export function flattenCombos(bit: TabBit): TabBit[] {
   }
 }
 
+
+
+export function findFirstChord(tablature: Tablature) {
+  for (const line of tablature.lines) {
+    for (const bit of line) {
+      if (bit.type == "chord") {
+        return bit.chord;
+      }
+    }
+  }
+  console.error("Could not find first chord in tablature :(")
+}

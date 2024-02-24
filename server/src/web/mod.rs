@@ -36,7 +36,7 @@ pub async fn run_server(opt: Opt, state: AppState) {
         .route("/", get(home::home))
         .route("/songs", post(song::add_song))
         .route("/songs/:id", get(song::song))
-        .route("/chords/:instrument/:chord", get(chord::chords))
+        .route("/api/chords/:instrument/:chord", get(chord::chords))
         .route("/api/songs", get(song::songs))
         .route("/api/songs/:id", get(song::api_song))
         .nest_service("/static", ServeDir::new(opt.static_dir))
