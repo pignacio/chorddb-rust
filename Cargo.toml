@@ -7,8 +7,10 @@ edition = "2021"
 
 [dependencies]
 console_error_panic_hook = "0.1.7"
+env_logger = "0.11.3"
 leptos = { version = "0.6.10", features = ["csr", "nightly"] }
 leptos_router = { version = "0.6.10", features = ["csr"] }
+log = "0.4.21"
 
 [package.metadata.leptos]
 style-file = "style/output.css"
