@@ -1,9 +1,14 @@
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 
 use leptos::*;
 use leptos_router::*;
 
+mod service;
+mod state;
 mod views;
+
+use service::{FileSongs, Songs};
+use state::ServerState;
 
 fn main() {
     // println!("Main!");
@@ -24,62 +29,11 @@ fn App() -> impl IntoView {
     view! { <MainRouter/> }
 }
 
-pub(crate) trait Songs: Send {
-    fn get_songs(&self) -> Vec<String>;
-}
-
-#[derive(Debug, Clone)]
-struct FileSongs {
-    path: String,
-    songs: Vec<String>,
-}
-
-impl FileSongs {
-    pub fn new<S: AsRef<str>>(path: S) -> Self {
-        let path = path.as_ref().to_string();
-
-        FileSongs {
-            path,
-            songs: vec!["Some Title".to_string(), "Another Title".to_string()],
-        }
-    }
-}
-
-impl Songs for FileSongs {
-    fn get_songs(&self) -> Vec<String> {
-        self.songs.clone()
-    }
-}
-
-pub(crate) struct AppState {
-    songs: Mutex<Box<dyn Songs + 'static>>,
-}
-
-impl AppState {
-    pub(crate) fn new<S: Songs + 'static>(songs: S) -> Self {
-        Self {
-            songs: Mutex::new(Box::new(songs)),
-        }
-    }
-
-    pub(crate) fn songs(&self) -> MutexGuard<Box<dyn Songs>> {
-        AppState::lock_clearing(&self.songs, "Songs")
-    }
-
-    fn lock_clearing<'a, T>(mutex: &'a Mutex<T>, name: &'static str) -> MutexGuard<'a, T> {
-        mutex.lock().unwrap_or_else(|err| {
-            log::info!("Clearing poison for {}", name);
-            mutex.clear_poison();
-            err.into_inner()
-        })
-    }
-}
-
 #[component]
 fn MainRouter() -> impl IntoView {
     let songs = FileSongs::new("songs.json");
-    let state = AppState::new(songs);
-    let arc: Arc<AppState> = Arc::new(state);
+    let state = ServerState::new(songs);
+    let arc: Arc<ServerState> = Arc::new(state);
 
     log::info!("MainRouter!");
 

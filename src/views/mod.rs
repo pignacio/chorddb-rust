@@ -1,18 +1,25 @@
 use std::sync::Arc;
 
-use leptos::{component, expect_context, view, IntoView};
+use leptos::{
+    component, create_resource, expect_context, server, view, IntoView, ServerFnError, SignalGet,
+};
 
-use crate::{AppState, Songs};
+use crate::{state::get_server_state_or_fail, ServerState, Songs};
+
+#[server(GetSongHeaders, "/api", "GetJson")]
+async fn get_song_headers() -> Result<Vec<String>, ServerFnError> {
+    Ok(get_server_state_or_fail().songs().get_songs());
+}
 
 #[component]
 pub fn Home() -> impl IntoView {
-    leptos::logging::log!("Home!");
-    let bad: Arc<dyn Songs + 'static> = expect_context();
-    let state: Arc<AppState> = expect_context();
-    let songs = state.songs();
+    let songs = create_resource(|| (), |_| async move { get_song_headers().await });
     view! {
         <h1>Home</h1>
 
-        {songs.get_songs()}
+        {move || match songs.get() {
+        None => view! { <p>"Loading..."</p> }.into_view(),
+        Some(titles) => view! { {titles} }.into_view()
+    }}
     }
 }
