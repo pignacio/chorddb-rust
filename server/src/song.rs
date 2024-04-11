@@ -153,7 +153,7 @@ impl FileSongs {
             .iter()
             .filter_map(|header| self.cache.get_song(&header.id))
             .collect();
-        std::fs::write(&self.path, serde_json::to_string(&songs).unwrap()).unwrap();
+        std::fs::write(&self.path, serde_json::to_string_pretty(&songs).unwrap()).unwrap();
     }
 }
 

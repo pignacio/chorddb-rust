@@ -41,21 +41,36 @@ pub struct AddSong {
     contents: String,
 }
 
-pub async fn add_song(
-    State(AppState { songs, .. }): State<AppState>,
-    Form(payload): Form<AddSong>,
-) -> Redirect {
-    let song = Song::new(
-        Uuid::new_v4(),
-        payload.author,
-        payload.title,
-        payload.contents,
-    );
+pub async fn add_song(State(AppState { songs, .. }): State<AppState>, payload: AddSong) -> Uuid {
+    let id = Uuid::new_v4();
+    let song = Song::new(id, payload.author, payload.title, payload.contents);
 
-    let id = *song.id();
     songs.add_song(song);
 
+    return id;
+}
+
+pub async fn add_song_and_redirect(
+    state: State<AppState>,
+    Form(payload): Form<AddSong>,
+) -> Redirect {
+    let id = add_song(state, payload).await;
+
     Redirect::to(&format!("/songs/{}", id))
+}
+
+#[derive(Serialize)]
+pub struct AddSongResult {
+    success: bool,
+    id: Uuid,
+}
+
+pub async fn api_add_song(
+    state: State<AppState>,
+    Json(payload): Json<AddSong>,
+) -> Json<AddSongResult> {
+    let id = add_song(state, payload).await;
+    Json(AddSongResult { success: true, id })
 }
 
 #[derive(Template)]
