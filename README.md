@@ -24,7 +24,7 @@ You can run the backend using
 cargo run
 ```
 
-The frontend app resides in the [frontend] directory. You can run it with
+The frontend app resides in the [frontend](frontend) directory. You can run it with
 
 ```
 cd frontend
