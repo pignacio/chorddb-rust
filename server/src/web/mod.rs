@@ -5,6 +5,7 @@ use std::{
 };
 
 use axum::{
+    http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     Router,
@@ -20,8 +21,6 @@ use crate::{
 };
 
 mod chord;
-mod home;
-mod not_found;
 mod song;
 
 #[derive(Clone)]
@@ -30,18 +29,19 @@ pub struct AppState {
     pub chords: Arc<dyn ChordRepository + Send + Sync>,
 }
 
+async fn not_found() -> StatusCode {
+    StatusCode::NOT_FOUND
+}
+
 pub async fn run_server(opt: Opt, state: AppState) {
     let app = Router::new()
         .route("/api/hello", get(hello))
-        .route("/", get(home::home))
-        .route("/songs", post(song::add_song_and_redirect))
-        .route("/songs/:id", get(song::song))
         .route("/api/chords/:instrument/:chord", get(chord::chords))
         .route("/api/songs", get(song::songs))
         .route("/api/songs/:id", get(song::api_song))
         .route("/api/add_song", post(song::api_add_song))
         .nest_service("/static", ServeDir::new(opt.static_dir))
-        .fallback(not_found::not_found)
+        .fallback(not_found)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .with_state(state);
 

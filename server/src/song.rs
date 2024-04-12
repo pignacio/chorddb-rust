@@ -257,14 +257,12 @@ impl PrecomputedChords {
     fn fingering_penalty(fingering: &Fingering) -> i32 {
         let mut bar = usize::MAX;
         let mut bar_count = 0;
-        for placement in fingering.placements() {
-            if let Some(value) = placement {
-                if *value > 0 && bar > *value {
-                    bar = *value;
-                    bar_count = 1;
-                } else if bar == *value {
-                    bar_count += 1;
-                }
+        for placement in fingering.placements().iter().flatten() {
+            if *placement > 0 && bar > *placement {
+                bar = *placement;
+                bar_count = 1;
+            } else if bar == *placement {
+                bar_count += 1;
             }
         }
         if bar == usize::MAX {
@@ -272,11 +270,9 @@ impl PrecomputedChords {
         }
 
         let mut finger_count = 0;
-        for placement in fingering.placements() {
-            if let Some(value) = placement {
-                if *value > bar {
-                    finger_count += 1;
-                }
+        for placement in fingering.placements().iter().flatten() {
+            if *placement > bar {
+                finger_count += 1;
             }
         }
 

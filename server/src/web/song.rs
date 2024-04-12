@@ -1,11 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use askama::Template;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::{Html, IntoResponse, Redirect},
-    Form, Json,
+    response::IntoResponse,
+    Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -13,8 +12,7 @@ use uuid::Uuid;
 use crate::{
     chord::{finder::GUITAR_STANDARD, Chord},
     parser::{parse_tablature, Comp, Line, LineBit},
-    song::{ChordRepository, Song, SongHeader},
-    web::not_found,
+    song::{Song, SongHeader},
 };
 
 use super::AppState;
@@ -47,16 +45,7 @@ pub async fn add_song(State(AppState { songs, .. }): State<AppState>, payload: A
 
     songs.add_song(song);
 
-    return id;
-}
-
-pub async fn add_song_and_redirect(
-    state: State<AppState>,
-    Form(payload): Form<AddSong>,
-) -> Redirect {
-    let id = add_song(state, payload).await;
-
-    Redirect::to(&format!("/songs/{}", id))
+    id
 }
 
 #[derive(Serialize)]
@@ -73,47 +62,8 @@ pub async fn api_add_song(
     Json(AddSongResult { success: true, id })
 }
 
-#[derive(Template)]
-#[template(path = "song.html")]
-struct SongTemplate {
-    song: Song,
-    tab: String,
-}
-
-pub async fn song(
-    Path(id): Path<String>,
-    State(AppState { songs, chords, .. }): State<AppState>,
-) -> impl IntoResponse {
-    return Html(
-        Uuid::parse_str(&id)
-            .ok()
-            .and_then(|song_id| songs.get_song(&song_id))
-            .map(|song| {
-                SongTemplate {
-                    song: song.clone(),
-                    tab: test(&song, chords.as_ref()),
-                }
-                .render()
-                .unwrap()
-            })
-            .unwrap_or_else(|| {
-                println!("Could not find song for '{}'", &id);
-                not_found::not_found_html()
-            }),
-    );
-}
-
-fn test(song: &Song, chords: &dyn ChordRepository) -> String {
-    serde_json::to_string(&get_tablature(song, chords)).unwrap()
-}
-
-fn get_tablature(song: &Song, chords: &dyn ChordRepository) -> Vec<Vec<LineBitModel>> {
-    let tab = parse_tablature(song.contents());
-    tab.iter().map(|l| serialize_line(l, chords)).collect()
-}
-
-fn serialize_line(line: &Line, chords: &dyn ChordRepository) -> Vec<LineBitModel> {
-    line.iter().map(|b| serialize_bit(b, chords)).collect()
+fn serialize_line(line: &Line) -> Vec<LineBitModel> {
+    line.iter().map(serialize_bit).collect()
 }
 
 lazy_static! {
@@ -160,7 +110,7 @@ lazy_static! {
     .collect();
 }
 
-fn serialize_bit(bit: &LineBit, chords: &dyn ChordRepository) -> LineBitModel {
+fn serialize_bit(bit: &LineBit) -> LineBitModel {
     match &bit.comp {
         Comp::Text(text) => LineBitModel {
             bit_type: "text".to_owned(),
@@ -196,11 +146,10 @@ fn extract_chords(tablature: Vec<Vec<LineBit>>) -> HashSet<Chord> {
     tablature
         .iter()
         .flatten()
-        .map(|b| match b.comp {
+        .filter_map(|b| match b.comp {
             Comp::Chord { chord, .. } => Some(chord),
             _ => None,
         })
-        .flatten()
         .collect()
 }
 
@@ -213,20 +162,16 @@ pub async fn api_song(
         .and_then(|song_id| songs.get_song(&song_id))
         .map(|song| {
             let tab = parse_tablature(song.contents());
-            let serialized_tab = tab
-                .iter()
-                .map(|l| serialize_line(l, chords.as_ref()))
-                .collect();
+            let serialized_tab = tab.iter().map(serialize_line).collect();
 
             let fingerings: HashMap<String, String> = extract_chords(tab)
                 .iter()
-                .map(|c| {
+                .filter_map(|c| {
                     chords
-                        .get_fingerings(&GUITAR_STANDARD, &c)
+                        .get_fingerings(&GUITAR_STANDARD, c)
                         .first()
                         .map(|f| (c.text(), f.to_str()))
                 })
-                .flatten()
                 .collect();
 
             SongModel {
@@ -236,6 +181,6 @@ pub async fn api_song(
                 fingerings,
             }
         })
-        .map(|m| Json(m))
+        .map(Json)
         .ok_or(StatusCode::NOT_FOUND);
 }

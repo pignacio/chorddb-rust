@@ -264,9 +264,7 @@ impl Chord {
 
     pub fn parse<S: AsRef<str>>(source: S) -> Option<Chord> {
         log::trace!("Parsing chord '{}'", source.as_ref());
-        let Some(caps) = CHORD_REGEX.captures(source.as_ref()) else {
-            return None;
-        };
+        let caps = CHORD_REGEX.captures(source.as_ref())?;
         let root = Key::parse(&caps["root"]).copied()?;
         Some(Chord {
             root,
