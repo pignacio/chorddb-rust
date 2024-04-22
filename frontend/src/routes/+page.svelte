@@ -1,52 +1,72 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { NewSongSchema } from '$lib/song';
 	import type { PageData } from './$types';
+	import { defaults, superForm } from 'sveltekit-superforms';
+	import { valibot } from 'sveltekit-superforms/adapters';
 
 	export let data: PageData;
-	let author: string = '';
-	let title: string = '';
-	let tablature: string = '';
+	let submitFailed = false;
+	let formElement: HTMLElement;
+	let { form, enhance, constraints } = superForm(defaults(valibot(NewSongSchema)), {
+		SPA: true,
+		validators: valibot(NewSongSchema),
+		onUpdate: async ({ form }) => {
+			console.log('onUpdate', form);
+			if (form.valid) {
+				let response = await fetch('/api/add_song', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(form.data)
+				});
 
-	async function addSong() {
-		console.log('About to add', { author: author, title: title, tablature: tablature });
-		var data = new FormData();
-		data.append('author', author);
-		data.append('title', title);
-		data.append('contents', tablature);
-
-		var json_data = {
-			author: author,
-			title: title,
-			contents: tablature
-		};
-
-		let response = await fetch('/api/add_song', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(json_data)
-		});
-
-		if (response.ok) {
-			let data = await response.json();
-			return await goto(`/songs/${data.id}`);
-		} else {
-			return 'FAILED';
+				if (response.ok) {
+					let data = await response.json();
+					return await goto(`/songs/${data.id}`);
+				} else {
+					submitFailed = true;
+				}
+			} else {
+				let errors = form.errors.author || [];
+				if (errors.length > 0) {
+					let input: HTMLObjectElement | null = formElement.querySelector('[name=author]');
+					input?.setCustomValidity(errors[0]);
+					input?.reportValidity();
+				}
+			}
 		}
-	}
+	});
 </script>
 
 <h1>Add Song</h1>
 
-<form class="mt-4" on:submit|preventDefault={addSong}>
+{#if submitFailed}
+	<div class="alert alert-danger">The song creation failed :(</div>
+{/if}
+<form class="mt-4" method="POST" use:enhance bind:this={formElement}>
 	<div class="grid grid-cols-2 gap-4 max-w-4xl">
-		<input type="text" bind:value={author} placeholder="Author" class="input input-bordered" />
-		<input type="text" bind:value={title} placeholder="Title" class="input input-bordered" />
+		<input
+			type="text"
+			name="author"
+			bind:value={$form.author}
+			placeholder="Author"
+			class="input input-bordered"
+			{...$constraints.author}
+		/>
+		<input
+			type="text"
+			bind:value={$form.title}
+			placeholder="Title"
+			class="input input-bordered"
+			{...$constraints.title}
+		/>
 		<textarea
 			placeholder="Tab"
-			bind:value={tablature}
+			bind:value={$form.contents}
 			class="textarea textarea-bordered textarea-lg col-span-2 h-64"
+			{...$constraints.contents}
 		></textarea>
 	</div>
 	<button class="btn btn-primary text-xl mt-4 w-32" type="submit">Add</button>
