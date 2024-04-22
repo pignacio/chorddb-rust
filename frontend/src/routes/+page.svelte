@@ -1,21 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { NewSongSchema } from '$lib/song';
 	import type { PageData } from './$types';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { valibot } from 'sveltekit-superforms/adapters';
-	import * as v from 'valibot';
-
-	const SCHEMA = v.object({
-		author: v.string([v.minLength(1, 'Please enter the author.')]),
-		title: v.string([v.minLength(1, 'Please enter the title.')]),
-		contents: v.string([v.minLength(1, 'Please enter the tablature.')])
-	});
 
 	export let data: PageData;
 	let submitFailed = false;
-	let { form, enhance, constraints } = superForm(defaults(valibot(SCHEMA)), {
+	let formElement: HTMLElement;
+	let { form, enhance, constraints } = superForm(defaults(valibot(NewSongSchema)), {
 		SPA: true,
-		validators: valibot(SCHEMA),
+		validators: valibot(NewSongSchema),
 		onUpdate: async ({ form }) => {
 			console.log('onUpdate', form);
 			if (form.valid) {
@@ -33,6 +28,13 @@
 				} else {
 					submitFailed = true;
 				}
+			} else {
+				let errors = form.errors.author || [];
+				if (errors.length > 0) {
+					let input: HTMLObjectElement | null = formElement.querySelector('[name=author]');
+					input?.setCustomValidity(errors[0]);
+					input?.reportValidity();
+				}
 			}
 		}
 	});
@@ -43,10 +45,11 @@
 {#if submitFailed}
 	<div class="alert alert-danger">The song creation failed :(</div>
 {/if}
-<form class="mt-4" method="POST" use:enhance>
+<form class="mt-4" method="POST" use:enhance bind:this={formElement}>
 	<div class="grid grid-cols-2 gap-4 max-w-4xl">
 		<input
 			type="text"
+			name="author"
 			bind:value={$form.author}
 			placeholder="Author"
 			class="input input-bordered"
