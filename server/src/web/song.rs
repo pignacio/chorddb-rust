@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     response::IntoResponse,
     Json,
 };
@@ -11,6 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     chord::{finder::GUITAR_STANDARD, Chord},
+    error::{ChordDbError, ChordDbResult},
     parser::{parse_tablature, Comp, Line, LineBit},
     song::{Song, SongHeader},
 };
@@ -39,13 +39,16 @@ pub struct AddSong {
     contents: String,
 }
 
-pub async fn add_song(State(AppState { songs, .. }): State<AppState>, payload: AddSong) -> Uuid {
+pub async fn add_song(
+    State(AppState { songs, .. }): State<AppState>,
+    payload: AddSong,
+) -> ChordDbResult<Uuid> {
     let id = Uuid::new_v4();
     let song = Song::new(id, payload.author, payload.title, payload.contents);
 
-    songs.add_song(song);
+    songs.add_song(song).await?;
 
-    id
+    Ok(id)
 }
 
 #[derive(Serialize)]
@@ -57,9 +60,11 @@ pub struct AddSongResult {
 pub async fn api_add_song(
     state: State<AppState>,
     Json(payload): Json<AddSong>,
-) -> Json<AddSongResult> {
-    let id = add_song(state, payload).await;
-    Json(AddSongResult { success: true, id })
+) -> ChordDbResult<Json<AddSongResult>> {
+    add_song(state, payload)
+        .await
+        .map(|id| AddSongResult { success: true, id })
+        .map(Json)
 }
 
 fn serialize_line(line: &Line) -> Vec<LineBitModel> {
@@ -130,8 +135,10 @@ fn serialize_bit(bit: &LineBit) -> LineBitModel {
     }
 }
 
-pub async fn songs(State(AppState { songs, .. }): State<AppState>) -> impl IntoResponse {
-    Json(songs.all_songs())
+pub async fn songs(
+    State(AppState { songs, .. }): State<AppState>,
+) -> ChordDbResult<impl IntoResponse> {
+    Ok(Json(songs.all_songs().await?))
 }
 
 #[derive(Serialize)]
@@ -156,31 +163,32 @@ fn extract_chords(tablature: Vec<Vec<LineBit>>) -> HashSet<Chord> {
 pub async fn api_song(
     Path(id): Path<String>,
     State(AppState { songs, chords, .. }): State<AppState>,
-) -> Result<impl IntoResponse, StatusCode> {
-    return Uuid::parse_str(&id)
-        .ok()
-        .and_then(|song_id| songs.get_song(&song_id))
-        .map(|song| {
-            let tab = parse_tablature(song.contents());
-            let serialized_tab = tab.iter().map(serialize_line).collect();
+) -> ChordDbResult<impl IntoResponse> {
+    let Some(song_id) = Uuid::parse_str(&id).ok() else {
+        return Err(ChordDbError::HttpNotFound);
+    };
+    let Some(song) = songs.get_song(&song_id).await? else {
+        return Err(ChordDbError::HttpNotFound);
+    };
+    let tab = parse_tablature(song.contents());
+    let serialized_tab = tab.iter().map(serialize_line).collect();
 
-            let fingerings: HashMap<String, String> = extract_chords(tab)
-                .iter()
-                .filter_map(|c| {
-                    chords
-                        .get_fingerings(&GUITAR_STANDARD, c)
-                        .first()
-                        .map(|f| (c.text(), f.to_str()))
-                })
-                .collect();
-
-            SongModel {
-                header: song.header().clone(),
-                contents: song.contents().into(),
-                tablature: serialized_tab,
-                fingerings,
-            }
+    let fingerings: HashMap<String, String> = extract_chords(tab)
+        .iter()
+        .filter_map(|c| {
+            chords
+                .get_fingerings(&GUITAR_STANDARD, c)
+                .first()
+                .map(|f| (c.text(), f.to_str()))
         })
-        .map(Json)
-        .ok_or(StatusCode::NOT_FOUND);
+        .collect();
+
+    let model = SongModel {
+        header: song.header().clone(),
+        contents: song.contents().into(),
+        tablature: serialized_tab,
+        fingerings,
+    };
+
+    Ok(Json(model))
 }

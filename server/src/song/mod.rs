@@ -13,6 +13,10 @@ use crate::chord::{
     Chord, ALL_KEYS, ALL_VARIANTS,
 };
 
+mod database;
+
+pub use database::SeaOrmSongs;
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SongHeader {
     id: Uuid,

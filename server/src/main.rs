@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
 use chorddb::chord::finder::GUITAR_STANDARD;
-use chorddb::song::{FileSongs, PrecomputedChords};
+use chorddb::song::{PrecomputedChords, SeaOrmSongs};
 use chorddb::web::{run_server, AppState};
 use chorddb::Opt;
 use clap::Parser;
+use sea_orm::Database;
 
 #[tokio::main]
 async fn main() {
+    dotenv::dotenv().ok();
     let opt = Opt::parse();
     // Setup logging & RUST_LOG from args
     if std::env::var("RUST_LOG").is_err() {
@@ -19,7 +21,12 @@ async fn main() {
     // Enable console logging
     tracing_subscriber::fmt::init();
 
-    let songs = FileSongs::new("songs.json");
+    let url = std::env::var("DATABASE_URL").expect("Must set DATABASE_URL");
+    let songs = SeaOrmSongs::new(
+        Database::connect(url)
+            .await
+            .expect("Could not connect to the database"),
+    );
     let state = AppState {
         songs: Arc::new(songs),
         chords: Arc::new(PrecomputedChords::new(&GUITAR_STANDARD)),

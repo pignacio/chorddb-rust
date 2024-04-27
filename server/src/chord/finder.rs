@@ -323,6 +323,7 @@ mod tests {
     use super::*;
     use test_log::test;
 
+    #[test]
     fn exploration() {
         let chords = [
             Chord::parse("A7").unwrap(),
