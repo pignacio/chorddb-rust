@@ -65,7 +65,7 @@
 		<textarea
 			placeholder="Tab"
 			bind:value={$form.contents}
-			class="textarea textarea-bordered textarea-lg col-span-2 h-64"
+			class="textarea textarea-bordered textarea-lg col-span-2 h-64 font-mono leading-none"
 			{...$constraints.contents}
 		></textarea>
 	</div>
