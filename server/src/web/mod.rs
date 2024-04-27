@@ -16,7 +16,7 @@ use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use crate::{
-    song::{ChordRepository, SongRepository},
+    song::{ChordRepository, SeaOrmSongs},
     Opt,
 };
 
@@ -25,7 +25,7 @@ mod song;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub songs: Arc<dyn SongRepository + Send + Sync>,
+    pub songs: Arc<SeaOrmSongs>,
     pub chords: Arc<dyn ChordRepository + Send + Sync>,
 }
 

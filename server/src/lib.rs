@@ -5,6 +5,8 @@ extern crate serde;
 use clap::Parser;
 
 pub mod chord;
+pub mod entities;
+pub mod error;
 pub mod parser;
 pub mod song;
 pub mod web;
