@@ -9,13 +9,10 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .create_table(
-                Table::create()
+            .alter_table(
+                Table::alter()
                     .table(Song::Table)
-                    .col(string(Song::Id).primary_key())
-                    .col(string(Song::Author))
-                    .col(string(Song::Title))
-                    .col(string(Song::Tablature))
+                    .add_column(string_null(Song::Fingerings))
                     .to_owned(),
             )
             .await
@@ -23,7 +20,12 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Song::Table).to_owned())
+            .alter_table(
+                Table::alter()
+                    .table(Song::Table)
+                    .drop_column(Song::Fingerings)
+                    .to_owned(),
+            )
             .await
     }
 }

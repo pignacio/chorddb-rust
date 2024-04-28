@@ -38,7 +38,7 @@ impl SongHeader {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct Song {
     header: SongHeader,
     contents: String,
@@ -49,6 +49,7 @@ impl Song {
         Song {
             header: SongHeader { id, author, title },
             contents,
+            fingerings: HashMap::new(),
         }
     }
 

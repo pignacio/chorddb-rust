@@ -10,6 +10,7 @@ pub struct Model {
     pub author: String,
     pub title: String,
     pub tablature: String,
+    pub fingerings: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
