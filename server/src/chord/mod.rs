@@ -1,11 +1,12 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt::Display,
+    fmt::{Display, Formatter},
     ops::Add,
 };
 
 use itertools::Itertools;
 use regex::Regex;
+use serde::{de::Error as SerdeError, Deserialize, Serialize};
 
 pub mod finder;
 
@@ -166,6 +167,40 @@ impl Ord for Note {
     }
 }
 
+impl Display for Note {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}{}", self.key.text(), self.octave()))
+    }
+}
+
+impl Serialize for Note {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Note {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer).and_then(|str| {
+            let captures = NOTE_REGEX
+                .captures(str.as_ref())
+                .ok_or_else(|| D::Error::custom(format!("Invalid note: '{}'", "lala")))?;
+            Ok(Note {
+                key: *Key::parse(&captures["key"]).expect("Invalid key provided by NOTE_REGEX"),
+                octave: captures["octave"]
+                    .parse()
+                    .expect("Invalid octave provided by NOTE_REGEX"),
+            })
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Variant {
     Major,
@@ -231,6 +266,8 @@ lazy_static! {
         *KEY_PATTERN, *VARIANT_PATTERN, *KEY_PATTERN
     );
     static ref CHORD_REGEX: Regex = Regex::new(&CHORD_PATTERN).unwrap();
+    static ref NOTE_REGEX: Regex =
+        Regex::new(&format!(r"(?<key>{})(?<octave>-?\d+)", *KEY_PATTERN)).unwrap();
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -289,7 +326,7 @@ impl Chord {
 }
 
 impl Display for Chord {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Chord({})", self.text())
     }
 }
@@ -348,5 +385,28 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn notes_serialize_correctly() {
+        for key in ALL_KEYS {
+            for octave in -5..10 {
+                let note = Note::new(key, octave);
+                let parsed: Note = parse_note(serde_json::to_string(&note).unwrap()).unwrap();
+
+                assert_eq!(parsed, note);
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_note_parsing() {
+        assert!(parse_note("A99999999999999").is_err());
+    }
+
+    fn parse_note<S: AsRef<str>>(source: S) -> Result<Note, serde_json::error::Error> {
+        let result = serde_json::from_str(source.as_ref());
+        log::info!("Parsed note: {} -> {:?}", source.as_ref(), result);
+        result
     }
 }
