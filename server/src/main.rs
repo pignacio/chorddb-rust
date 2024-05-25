@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use chorddb::chord::finder::GUITAR_STANDARD;
-use chorddb::song::{PrecomputedChords, SeaOrmSongs};
+use chorddb::chord::finder::{Fingering, GUITAR_STANDARD};
+use chorddb::song::{CachedChords, FingeringCalculator, PrecomputedChords, SeaOrmSongs};
 use chorddb::web::{run_server, AppState};
 use chorddb::Opt;
 use clap::Parser;
@@ -29,7 +29,7 @@ async fn main() {
     );
     let state = AppState {
         songs: Arc::new(songs),
-        chords: Arc::new(PrecomputedChords::new(&GUITAR_STANDARD)),
+        chords: Arc::new(CachedChords::new(FingeringCalculator {})),
     };
 
     run_server(opt, state).await;

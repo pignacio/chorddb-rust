@@ -4,7 +4,7 @@ use axum::{
 };
 
 use crate::chord::{
-    finder::{Fingering, StringInstrument, GUITAR_STANDARD},
+    finder::{Fingering, StringInstrument, GUITAR_STANDARD, MIMI},
     Chord,
 };
 
@@ -29,5 +29,5 @@ pub async fn chords(
 }
 
 fn parse_instrument(_instrument: String) -> Option<&'static StringInstrument> {
-    Some(&GUITAR_STANDARD)
+    Some(&MIMI)
 }

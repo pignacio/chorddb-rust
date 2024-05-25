@@ -4,6 +4,7 @@ use std::{
     time::SystemTime,
 };
 
+use dashmap::DashMap;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -177,7 +178,11 @@ impl SongRepository for FileSongs {
 }
 
 pub trait ChordRepository {
-    fn get_fingerings(&self, instrument: &'static StringInstrument, chord: &Chord) -> &[Fingering];
+    fn get_fingerings(
+        &self,
+        instrument: &'static StringInstrument,
+        chord: &Chord,
+    ) -> Vec<Fingering>;
 }
 
 pub struct PrecomputedChords {
@@ -350,11 +355,203 @@ impl PrecomputedChords {
 }
 
 impl ChordRepository for PrecomputedChords {
-    fn get_fingerings(&self, instrument: &'static StringInstrument, chord: &Chord) -> &[Fingering] {
+    fn get_fingerings(
+        &self,
+        instrument: &'static StringInstrument,
+        chord: &Chord,
+    ) -> Vec<Fingering> {
         if instrument == self.instrument {
-            self.fingerings.get(chord).map(|v| &v[..]).unwrap_or(&[])
+            self.fingerings.get(chord).cloned().unwrap_or(vec![])
         } else {
-            &[]
+            vec![]
         }
+    }
+}
+
+pub struct CachedChords {
+    cache: DashMap<String, DashMap<Chord, Vec<Fingering>>>,
+    chords: Box<dyn ChordRepository + Send + Sync>,
+}
+
+impl CachedChords {
+    pub fn new<C>(chords: C) -> Self
+    where
+        C: ChordRepository + Send + Sync + 'static,
+    {
+        Self {
+            cache: DashMap::new(),
+            chords: Box::new(chords),
+        }
+    }
+}
+
+impl ChordRepository for CachedChords {
+    fn get_fingerings(
+        &self,
+        instrument: &'static StringInstrument,
+        chord: &Chord,
+    ) -> Vec<Fingering> {
+        let instrument_cache = self.cache.entry(instrument.id().to_owned()).or_default();
+
+        let fingerings = instrument_cache.entry(*chord).or_insert_with(|| {
+            log::info!(
+                "Calculating fingerings for {} on {}",
+                chord.text(),
+                instrument.description()
+            );
+            self.chords.get_fingerings(instrument, chord).to_vec()
+        });
+
+        fingerings.value().clone()
+    }
+}
+
+pub struct FingeringCalculator {}
+
+impl FingeringCalculator {
+    fn fingering_penalty(fingering: &Fingering) -> i32 {
+        let mut bar = usize::MAX;
+        let mut bar_count = 0;
+        for placement in fingering.placements().iter().flatten() {
+            if *placement > 0 && bar > *placement {
+                bar = *placement;
+                bar_count = 1;
+            } else if bar == *placement {
+                bar_count += 1;
+            }
+        }
+        if bar == usize::MAX {
+            bar = 0;
+        }
+
+        let mut finger_count = 0;
+        for placement in fingering.placements().iter().flatten() {
+            if *placement > bar {
+                finger_count += 1;
+            }
+        }
+
+        if finger_count > 4 || (bar > 0 && finger_count > 3) {
+            // Too many fingers!
+            return 1000;
+        }
+
+        // Distance from the bar
+        let mut score: i32 = fingering
+            .placements()
+            .iter()
+            .filter(|x| matches!(x, Some(v) if *v > 0))
+            .map(|x| x.map(|v| (v - bar) as i32).unwrap_or(0))
+            .map(|x| x * x)
+            .sum();
+
+        // Favor chords lower on the neck
+        score += bar as i32 * 4;
+
+        // Does it skip strings at the start?
+        let mut start = 0;
+        for placement in fingering.placements() {
+            if !placement.is_none() {
+                break;
+            }
+            start += 1;
+        }
+        score += start * 10;
+
+        // Does it skip strings at the end?
+        let mut end = 0;
+        for placement in fingering.placements().iter().rev() {
+            if !placement.is_none() {
+                break;
+            }
+            end += 1;
+        }
+        score += end * 10;
+
+        // Does it have holes?
+        if Self::has_note_hole(fingering) {
+            score += 50;
+        }
+        if bar_count > 1 && bar_count + finger_count >= 4 && Self::has_bar_hole(fingering, &bar) {
+            score += 50;
+        }
+
+        // Uses all the fingers
+        if finger_count >= 3 {
+            score += 10;
+        }
+
+        // Penalize big consecutive differences
+        let mut last: Option<usize> = None;
+        for placement in fingering.placements() {
+            let Some(current) = placement else {
+                continue;
+            };
+            if current > &0 {
+                if let Some(last_value) = last {
+                    let distance = last_value as i32 - *current as i32;
+                    score += distance * distance;
+                }
+                last = Some(*current);
+            }
+        }
+
+        score
+    }
+
+    fn has_note_hole(fingering: &Fingering) -> bool {
+        let mut found_finger = false;
+        let mut found_hole = false;
+        for value in fingering.placements() {
+            if let Some(_note) = value {
+                if found_hole {
+                    return true;
+                }
+                found_finger = true;
+            } else if found_finger {
+                found_hole = true;
+            }
+        }
+        false
+    }
+
+    fn has_bar_hole(fingering: &Fingering, bar: &usize) -> bool {
+        let mut found_bar = false;
+        for value in fingering.placements() {
+            if let Some(note) = value {
+                if note == bar {
+                    found_bar = true;
+                } else if 0 == *note && found_bar {
+                    return true;
+                }
+            } else if found_bar {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+impl ChordRepository for FingeringCalculator {
+    fn get_fingerings(
+        &self,
+        instrument: &'static StringInstrument,
+        chord: &Chord,
+    ) -> Vec<Fingering> {
+        let mut chord_fingerings = find_fingerings(chord, instrument);
+        chord_fingerings.sort_by_cached_key(Self::fingering_penalty);
+        let top = 10;
+        log::info!(
+            "Top {} for {}: {}",
+            top,
+            chord,
+            chord_fingerings
+                .iter()
+                .take(top)
+                .map(|f| format!("{} ({})", f.to_str(), Self::fingering_penalty(f)))
+                .join(", ")
+        );
+
+        chord_fingerings
     }
 }

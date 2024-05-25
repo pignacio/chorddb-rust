@@ -24,6 +24,7 @@ impl Corda {
 
 #[derive(PartialEq, Eq)]
 pub struct StringInstrument {
+    id: String,
     description: String,
     has_bass: bool,
     strings: Vec<Corda>,
@@ -42,20 +43,42 @@ impl Display for StringInstrument {
 }
 
 impl StringInstrument {
-    pub fn with_bass<S>(description: S, strings: Vec<Corda>) -> Self
+    pub fn with_bass<S>(id: S, description: S, strings: Vec<Corda>) -> Self
     where
         S: AsRef<str>,
     {
         StringInstrument {
+            id: id.as_ref().to_owned(),
             description: description.as_ref().to_owned(),
             has_bass: true,
             strings,
         }
     }
+
+    pub fn without_bass<S>(id: S, description: S, strings: Vec<Corda>) -> Self
+    where
+        S: AsRef<str>,
+    {
+        StringInstrument {
+            id: id.as_ref().to_owned(),
+            description: description.as_ref().to_owned(),
+            has_bass: false,
+            strings,
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
 }
 
 lazy_static! {
     pub static ref GUITAR_STANDARD: StringInstrument = StringInstrument::with_bass(
+        "guitar",
         "Guitar, Standard Tuning",
         vec![
             Corda::new(Note::new(Key::E, 2), 24),
@@ -66,8 +89,18 @@ lazy_static! {
             Corda::new(Note::new(Key::E, 4), 24),
         ]
     );
+    pub static ref MIMI: StringInstrument = StringInstrument::without_bass(
+        "mimi",
+        "Loog Guitar",
+        vec![
+            Corda::new(Note::new(Key::G, 3), 16),
+            Corda::new(Note::new(Key::B, 3), 16),
+            Corda::new(Note::new(Key::E, 4), 16),
+        ]
+    );
 }
 
+#[derive(Clone)]
 pub struct Fingering {
     instrument: &'static StringInstrument,
     placements: Vec<Option<usize>>,
