@@ -11,8 +11,10 @@
 
 	export let data: PageData;
 	let currentFingerings: { [key: string]: string } = data.fingerings;
+	$: currentFingerings = data.fingerings;
 
-	let firstChord = findFirstChord(data.tablature);
+	let firstChord: string | undefined;
+	$: firstChord = findFirstChord(data.tablature);
 	let fingeringsEnabled: boolean = false;
 	let fingerings: { [key: string]: Promise<string[]> } = {};
 	let selectedChord: string | undefined = undefined;
@@ -20,7 +22,8 @@
 	let selectedChordFingerings: Promise<string[]>;
 	let showOriginal: boolean = false;
 
-	let selectedInstrument: string | undefined = data.instrument;
+	let selectedInstrument: string | undefined;
+	selectedInstrument = data.instrument;
 	$: updateInstrument(selectedInstrument);
 
 	async function loadFingerings(chord: string): Promise<string[]> {
@@ -30,14 +33,16 @@
 		return fingerings;
 	}
 
-	function updateInstrument(new_instrument: string | undefined) {
+	async function updateInstrument(new_instrument: string | undefined) {
+		console.log('updateInstrument', { current: data.instrument, new: new_instrument });
 		if (new_instrument && new_instrument != data.instrument) {
 			const url = new URL($page.url);
 			url.searchParams.set('instrument', new_instrument);
-			console.log('GOTO', url);
-			goto(url);
-			console.log('InvalidateAll');
-			invalidateAll();
+			console.log('GOTO', {});
+			await goto(url);
+			// console.log('InvalidateAll', { page: $page, data: data });
+			// await invalidateAll();
+			console.log('invalidated', { data: data });
 		}
 	}
 
@@ -70,11 +75,14 @@
 </script>
 
 <h1>{data.author} - {data.title}</h1>
-<select bind:value={selectedInstrument}>
-	{#each data.instruments as instrument}
-		<option value={instrument.id}>{instrument.name}</option>
-	{/each}
-</select>
+<div>
+	Instrument:
+	<select bind:value={selectedInstrument} class="select select-bordered">
+		{#each data.instruments as instrument}
+			<option value={instrument.id}>{instrument.name}</option>
+		{/each}
+	</select>
+</div>
 
 <div class="flex flex-row bg-gray-100">
 	<div class="flex-auto text-xl m-4 overflow-hidden">

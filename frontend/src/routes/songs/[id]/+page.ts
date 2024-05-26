@@ -3,10 +3,13 @@ import { fetchInstruments } from '$lib/instrument';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch, params, url }) => {
+	console.log('Loading!', { params: params, url: url });
 	const queryString = {
 		instrument: url.searchParams.get('instrument')
 	};
-	const res = await fetch(`/api/songs/${params.id}?${encodeQueryString(queryString)}`);
+	const apiUrl = `/api/songs/${params.id}?${encodeQueryString(queryString)}`;
+	console.log('Calling API', apiUrl);
+	const res = await fetch(apiUrl);
 	const data = await res.json();
 	const instruments = unpackOrThrow(await fetchInstruments(fetch));
 	return {
