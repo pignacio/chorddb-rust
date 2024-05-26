@@ -28,6 +28,7 @@ impl Corda {
 #[derive(Clone, PartialEq, Eq)]
 pub struct StringInstrument {
     id: String,
+    name: String,
     description: String,
     has_bass: bool,
     strings: Vec<Corda>,
@@ -41,29 +42,35 @@ impl Debug for StringInstrument {
 
 impl Display for StringInstrument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Instrument({})", self.description)
+        write!(
+            f,
+            "Instrument({}, {}, {})",
+            self.id, self.name, self.description
+        )
     }
 }
 
 impl StringInstrument {
-    pub fn with_bass<S>(id: S, description: S, strings: Vec<Corda>) -> Self
+    pub fn with_bass<S>(id: S, name: S, description: S, strings: Vec<Corda>) -> Self
     where
         S: AsRef<str>,
     {
         StringInstrument {
             id: id.as_ref().to_owned(),
+            name: name.as_ref().to_owned(),
             description: description.as_ref().to_owned(),
             has_bass: true,
             strings,
         }
     }
 
-    pub fn without_bass<S>(id: S, description: S, strings: Vec<Corda>) -> Self
+    pub fn without_bass<S>(id: S, name: S, description: S, strings: Vec<Corda>) -> Self
     where
         S: AsRef<str>,
     {
         StringInstrument {
             id: id.as_ref().to_owned(),
+            name: name.as_ref().to_owned(),
             description: description.as_ref().to_owned(),
             has_bass: false,
             strings,
@@ -74,6 +81,10 @@ impl StringInstrument {
         &self.id
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn description(&self) -> &str {
         &self.description
     }
@@ -82,7 +93,8 @@ impl StringInstrument {
 lazy_static! {
     pub static ref GUITAR_STANDARD: StringInstrument = StringInstrument::with_bass(
         "guitar",
-        "Guitar, Standard Tuning",
+        "Guitar",
+        "6-String Guitar, Standard Tuning (EADGBE)",
         vec![
             Corda::new(Note::new(Key::E, 2), 24),
             Corda::new(Note::new(Key::A, 2), 24),
@@ -94,7 +106,8 @@ lazy_static! {
     );
     pub static ref MIMI: StringInstrument = StringInstrument::without_bass(
         "mimi",
-        "Loog Guitar",
+        "Mimi",
+        "Loog Guitar, tuned GBE",
         vec![
             Corda::new(Note::new(Key::G, 3), 16),
             Corda::new(Note::new(Key::B, 3), 16),
