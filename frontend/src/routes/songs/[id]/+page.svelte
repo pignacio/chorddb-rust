@@ -6,6 +6,8 @@
 	import type { PageData } from './$types';
 	import leftArrowSvg from '$lib/assets/left-arrow.svg';
 	import rightArrowSvg from '$lib/assets/right-arrow.svg';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 
 	export let data: PageData;
 	let currentFingerings: { [key: string]: string } = data.fingerings;
@@ -18,11 +20,21 @@
 	let selectedChordFingerings: Promise<string[]>;
 	let showOriginal: boolean = false;
 
+	let selectedInstrument: string | undefined = data.instrument.id;
+	$: updateInstrument(selectedInstrument);
+
 	async function loadFingerings(chord: string): Promise<string[]> {
 		let fingerings = await fetch(
 			`/api/chords/${encodeURIComponent(data.instrument)}/${encodeURIComponent(chord)}`
 		).then((d) => d.json());
 		return fingerings;
+	}
+
+	function updateInstrument(new_instrument: string | undefined) {
+		if (new_instrument && new_instrument != data.instrument) {
+			$page.url.searchParams.set('instrument', new_instrument);
+			goto(`?${$page.url.searchParams.toString()}`);
+		}
 	}
 
 	$: {
@@ -54,6 +66,12 @@
 </script>
 
 <h1>{data.author} - {data.title}</h1>
+{@debug selectedInstrument}
+<select bind:value={selectedInstrument}>
+	{#each data.instruments as instrument}
+		<option value={instrument.id}>{instrument.name}</option>
+	{/each}
+</select>
 
 <div class="flex flex-row bg-gray-100">
 	<div class="flex-auto text-xl m-4 overflow-hidden">
