@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     response::IntoResponse,
     Json,
 };
@@ -161,15 +161,35 @@ fn extract_chords(tablature: Vec<Vec<LineBit>>) -> HashSet<Chord> {
         .collect()
 }
 
+#[derive(Deserialize)]
+pub struct SongQueryString {
+    instrument: Option<String>,
+}
+
 pub async fn api_song(
     Path(id): Path<String>,
-    State(AppState { songs, chords, .. }): State<AppState>,
+    Query(query_string): Query<SongQueryString>,
+    State(AppState {
+        songs,
+        chords,
+        instruments,
+        ..
+    }): State<AppState>,
 ) -> ChordDbResult<impl IntoResponse> {
     let Some(song_id) = Uuid::parse_str(&id).ok() else {
         return Err(ChordDbError::HttpNotFound);
     };
     let Some(song) = songs.get_song(&song_id).await? else {
         return Err(ChordDbError::HttpNotFound);
+    };
+
+    let instrument = if let Some(instrument_id) = query_string.instrument {
+        instruments
+            .get_instrument(&instrument_id)
+            .await
+            .unwrap_or(GUITAR_STANDARD.clone())
+    } else {
+        GUITAR_STANDARD.clone()
     };
     let tab = parse_tablature(song.contents());
     let serialized_tab = tab.iter().map(serialize_line).collect();
@@ -178,7 +198,7 @@ pub async fn api_song(
         .iter()
         .filter_map(|c| {
             chords
-                .get_fingerings(&GUITAR_STANDARD, c)
+                .get_fingerings(&instrument, c)
                 .first()
                 .map(|f| (c.text(), f.to_str()))
         })

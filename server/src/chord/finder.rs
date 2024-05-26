@@ -10,7 +10,7 @@ use super::Chord;
 use super::Key;
 use super::Note;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Corda {
     note: Note,
     frets: usize,
@@ -22,7 +22,7 @@ impl Corda {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct StringInstrument {
     id: String,
     description: String,
@@ -102,7 +102,7 @@ lazy_static! {
 
 #[derive(Clone)]
 pub struct Fingering {
-    instrument: &'static StringInstrument,
+    instrument_id: String,
     placements: Vec<Option<usize>>,
 }
 
@@ -125,12 +125,17 @@ impl Fingering {
 
 impl Debug for Fingering {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}) for {}", self.to_str(), self.instrument)
+        write!(
+            f,
+            "({}) for Instrument<{}>",
+            self.to_str(),
+            self.instrument_id
+        )
     }
 }
 
 struct BacktrackState {
-    instrument: &'static StringInstrument,
+    instrument: StringInstrument,
     chord_keys: HashSet<Key>,
     placements: Vec<Option<usize>>,
     sorted_placements: SortedVec<usize>,
@@ -144,9 +149,9 @@ struct BacktrackState {
 }
 
 impl BacktrackState {
-    fn starting(chord: &Chord, instrument: &'static StringInstrument) -> BacktrackState {
+    fn starting(chord: &Chord, instrument: &StringInstrument) -> BacktrackState {
         BacktrackState {
-            instrument,
+            instrument: instrument.clone(),
             chord_keys: chord.keys().iter().copied().collect(),
             placements: vec![],
             sorted_placements: SortedVec::new(),
@@ -220,7 +225,7 @@ fn is_in_range(state: &BacktrackState, fret: &usize) -> bool {
             && *fret <= min + MAX_DISPLACEMENT)
 }
 
-pub fn find_fingerings(chord: &Chord, instrument: &'static StringInstrument) -> Vec<Fingering> {
+pub fn find_fingerings(chord: &Chord, instrument: &StringInstrument) -> Vec<Fingering> {
     let start = SystemTime::now();
     let mut chord_keys = chord.keys();
     chord_keys.insert(chord.bass);
@@ -260,7 +265,7 @@ pub fn find_fingerings(chord: &Chord, instrument: &'static StringInstrument) -> 
 
 fn finder_backtrack(
     chord: &Chord,
-    instrument: &'static StringInstrument,
+    instrument: &StringInstrument,
     found_fingerings: &mut Vec<Fingering>,
     candidates: &Vec<Vec<usize>>,
     state: &mut BacktrackState,
@@ -290,7 +295,7 @@ fn finder_backtrack(
 
 fn backtrap_step(
     chord: &Chord,
-    instrument: &'static StringInstrument,
+    instrument: &StringInstrument,
     found_fingerings: &mut Vec<Fingering>,
     candidates: &Vec<Vec<usize>>,
     state: &mut BacktrackState,
@@ -337,7 +342,7 @@ fn get_valid_fingering(
         .collect();
     if fingering_keys == state.chord_keys {
         Ok(Fingering {
-            instrument: state.instrument,
+            instrument_id: state.instrument.id().to_string(),
             placements: state.placements.clone(),
         })
     } else {

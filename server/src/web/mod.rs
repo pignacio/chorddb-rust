@@ -16,6 +16,7 @@ use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use crate::{
+    instrument::Instruments,
     song::{ChordRepository, SeaOrmSongs},
     Opt,
 };
@@ -27,6 +28,7 @@ mod song;
 pub struct AppState {
     pub songs: Arc<SeaOrmSongs>,
     pub chords: Arc<dyn ChordRepository + Send + Sync>,
+    pub instruments: Arc<dyn Instruments + Send + Sync>,
 }
 
 async fn not_found() -> StatusCode {

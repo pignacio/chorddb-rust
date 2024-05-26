@@ -178,11 +178,7 @@ impl SongRepository for FileSongs {
 }
 
 pub trait ChordRepository {
-    fn get_fingerings(
-        &self,
-        instrument: &'static StringInstrument,
-        chord: &Chord,
-    ) -> Vec<Fingering>;
+    fn get_fingerings(&self, instrument: &StringInstrument, chord: &Chord) -> Vec<Fingering>;
 }
 
 pub struct PrecomputedChords {
@@ -355,11 +351,7 @@ impl PrecomputedChords {
 }
 
 impl ChordRepository for PrecomputedChords {
-    fn get_fingerings(
-        &self,
-        instrument: &'static StringInstrument,
-        chord: &Chord,
-    ) -> Vec<Fingering> {
+    fn get_fingerings(&self, instrument: &StringInstrument, chord: &Chord) -> Vec<Fingering> {
         if instrument == self.instrument {
             self.fingerings.get(chord).cloned().unwrap_or(vec![])
         } else {
@@ -386,11 +378,7 @@ impl CachedChords {
 }
 
 impl ChordRepository for CachedChords {
-    fn get_fingerings(
-        &self,
-        instrument: &'static StringInstrument,
-        chord: &Chord,
-    ) -> Vec<Fingering> {
+    fn get_fingerings(&self, instrument: &StringInstrument, chord: &Chord) -> Vec<Fingering> {
         let instrument_cache = self.cache.entry(instrument.id().to_owned()).or_default();
 
         let fingerings = instrument_cache.entry(*chord).or_insert_with(|| {
@@ -533,11 +521,7 @@ impl FingeringCalculator {
 }
 
 impl ChordRepository for FingeringCalculator {
-    fn get_fingerings(
-        &self,
-        instrument: &'static StringInstrument,
-        chord: &Chord,
-    ) -> Vec<Fingering> {
+    fn get_fingerings(&self, instrument: &StringInstrument, chord: &Chord) -> Vec<Fingering> {
         let mut chord_fingerings = find_fingerings(chord, instrument);
         chord_fingerings.sort_by_cached_key(Self::fingering_penalty);
         let top = 10;
