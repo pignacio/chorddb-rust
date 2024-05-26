@@ -1,10 +1,13 @@
 use sorted_vec::SortedVec;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::time::SystemTime;
 
 use itertools::Itertools;
+
+use crate::chord::Variant;
 
 use super::Chord;
 use super::Key;
@@ -98,6 +101,14 @@ lazy_static! {
             Corda::new(Note::new(Key::E, 4), 16),
         ]
     );
+    pub static ref THREE_STRING_DOWNGRADES: HashMap<Variant, Variant> = {
+        let mut m = HashMap::new();
+        m.insert(Variant::MinorSixth, Variant::Minor);
+        m.insert(Variant::MinorSeventh, Variant::Minor);
+        m.insert(Variant::Seventh, Variant::Major);
+        m.insert(Variant::AddNinth, Variant::Major);
+        m
+    };
 }
 
 #[derive(Clone)]
@@ -235,6 +246,18 @@ pub fn find_fingerings(chord: &Chord, instrument: &StringInstrument) -> Vec<Fing
             instrument.id()
         );
         return find_fingerings(&new_chord, instrument);
+    }
+    if instrument.strings.len() < 4 {
+        if let Some(new_variant) = THREE_STRING_DOWNGRADES.get(&chord.variant) {
+            let new_chord = Chord::new(chord.root, *new_variant, chord.root);
+            log::info!(
+                "Downgrading chord {} to {} because Instrument<{}> does not have a bass",
+                chord,
+                new_chord,
+                instrument.id()
+            );
+            return find_fingerings(&new_chord, instrument);
+        }
     }
     let start = SystemTime::now();
     let chord_keys = chord.keys();
