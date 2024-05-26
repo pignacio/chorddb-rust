@@ -6,7 +6,7 @@
 	import type { PageData } from './$types';
 	import leftArrowSvg from '$lib/assets/left-arrow.svg';
 	import rightArrowSvg from '$lib/assets/right-arrow.svg';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
 
 	export let data: PageData;
@@ -20,7 +20,7 @@
 	let selectedChordFingerings: Promise<string[]>;
 	let showOriginal: boolean = false;
 
-	let selectedInstrument: string | undefined = data.instrument.id;
+	let selectedInstrument: string | undefined = data.instrument;
 	$: updateInstrument(selectedInstrument);
 
 	async function loadFingerings(chord: string): Promise<string[]> {
@@ -32,8 +32,12 @@
 
 	function updateInstrument(new_instrument: string | undefined) {
 		if (new_instrument && new_instrument != data.instrument) {
-			$page.url.searchParams.set('instrument', new_instrument);
-			goto(`?${$page.url.searchParams.toString()}`);
+			const url = new URL($page.url);
+			url.searchParams.set('instrument', new_instrument);
+			console.log('GOTO', url);
+			goto(url);
+			console.log('InvalidateAll');
+			invalidateAll();
 		}
 	}
 
@@ -66,7 +70,6 @@
 </script>
 
 <h1>{data.author} - {data.title}</h1>
-{@debug selectedInstrument}
 <select bind:value={selectedInstrument}>
 	{#each data.instruments as instrument}
 		<option value={instrument.id}>{instrument.name}</option>
