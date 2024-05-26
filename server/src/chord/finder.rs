@@ -251,7 +251,7 @@ pub fn find_fingerings(chord: &Chord, instrument: &StringInstrument) -> Vec<Fing
         if let Some(new_variant) = THREE_STRING_DOWNGRADES.get(&chord.variant) {
             let new_chord = Chord::new(chord.root, *new_variant, chord.root);
             log::info!(
-                "Downgrading chord {} to {} because Instrument<{}> does not have a bass",
+                "Downgrading chord {} to {} because Instrument<{}> does not have enough strings",
                 chord,
                 new_chord,
                 instrument.id()

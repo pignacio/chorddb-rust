@@ -19,7 +19,9 @@
 	let showOriginal: boolean = false;
 
 	async function loadFingerings(chord: string): Promise<string[]> {
-		let fingerings = await fetch(`/api/chords/GUITAR_STANDARD/${chord}`).then((d) => d.json());
+		let fingerings = await fetch(
+			`/api/chords/${encodeURIComponent(data.instrument)}/${encodeURIComponent(chord)}`
+		).then((d) => d.json());
 		return fingerings;
 	}
 

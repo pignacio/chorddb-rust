@@ -148,6 +148,7 @@ struct SongModel {
     tablature: Vec<Vec<LineBitModel>>,
     fingerings: HashMap<String, String>,
     original: String,
+    instrument: String,
 }
 
 fn extract_chords(tablature: Vec<Vec<LineBit>>) -> HashSet<Chord> {
@@ -210,6 +211,7 @@ pub async fn api_song(
         tablature: serialized_tab,
         fingerings,
         original: song.contents().to_string(),
+        instrument: instrument.id().to_string(),
     };
 
     Ok(Json(model))

@@ -12,6 +12,7 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
 		title: data.header.title,
 		tablature: { lines: data.tablature },
 		fingerings: data.fingerings,
-		original: data.original
+		original: data.original,
+		instrument: data.instrument
 	};
 };
