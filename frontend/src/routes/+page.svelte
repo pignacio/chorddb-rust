@@ -12,7 +12,6 @@
 		SPA: true,
 		validators: valibot(NewSongSchema),
 		onUpdate: async ({ form }) => {
-			console.log('onUpdate', form);
 			if (form.valid) {
 				let response = await fetch('/api/add_song', {
 					method: 'POST',

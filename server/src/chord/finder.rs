@@ -1,4 +1,5 @@
 use sorted_vec::SortedVec;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -6,11 +7,13 @@ use std::time::SystemTime;
 
 use itertools::Itertools;
 
+use crate::chord::Variant;
+
 use super::Chord;
 use super::Key;
 use super::Note;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Corda {
     note: Note,
     frets: usize,
@@ -22,8 +25,10 @@ impl Corda {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct StringInstrument {
+    id: String,
+    name: String,
     description: String,
     has_bass: bool,
     strings: Vec<Corda>,
@@ -37,26 +42,59 @@ impl Debug for StringInstrument {
 
 impl Display for StringInstrument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Instrument({})", self.description)
+        write!(
+            f,
+            "Instrument({}, {}, {})",
+            self.id, self.name, self.description
+        )
     }
 }
 
 impl StringInstrument {
-    pub fn with_bass<S>(description: S, strings: Vec<Corda>) -> Self
+    pub fn with_bass<S>(id: S, name: S, description: S, strings: Vec<Corda>) -> Self
     where
         S: AsRef<str>,
     {
         StringInstrument {
+            id: id.as_ref().to_owned(),
+            name: name.as_ref().to_owned(),
             description: description.as_ref().to_owned(),
             has_bass: true,
             strings,
         }
     }
+
+    pub fn without_bass<S>(id: S, name: S, description: S, strings: Vec<Corda>) -> Self
+    where
+        S: AsRef<str>,
+    {
+        StringInstrument {
+            id: id.as_ref().to_owned(),
+            name: name.as_ref().to_owned(),
+            description: description.as_ref().to_owned(),
+            has_bass: false,
+            strings,
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
 }
 
 lazy_static! {
     pub static ref GUITAR_STANDARD: StringInstrument = StringInstrument::with_bass(
-        "Guitar, Standard Tuning",
+        "guitar",
+        "Guitar",
+        "6-String Guitar, Standard Tuning (EADGBE)",
         vec![
             Corda::new(Note::new(Key::E, 2), 24),
             Corda::new(Note::new(Key::A, 2), 24),
@@ -66,10 +104,29 @@ lazy_static! {
             Corda::new(Note::new(Key::E, 4), 24),
         ]
     );
+    pub static ref MIMI: StringInstrument = StringInstrument::without_bass(
+        "mimi",
+        "Mimi",
+        "Loog Guitar, tuned GBE",
+        vec![
+            Corda::new(Note::new(Key::G, 3), 16),
+            Corda::new(Note::new(Key::B, 3), 16),
+            Corda::new(Note::new(Key::E, 4), 16),
+        ]
+    );
+    pub static ref THREE_STRING_DOWNGRADES: HashMap<Variant, Variant> = {
+        let mut m = HashMap::new();
+        m.insert(Variant::MinorSixth, Variant::Minor);
+        m.insert(Variant::MinorSeventh, Variant::Minor);
+        m.insert(Variant::Seventh, Variant::Major);
+        m.insert(Variant::AddNinth, Variant::Major);
+        m
+    };
 }
 
+#[derive(Clone)]
 pub struct Fingering {
-    instrument: &'static StringInstrument,
+    instrument_id: String,
     placements: Vec<Option<usize>>,
 }
 
@@ -92,12 +149,17 @@ impl Fingering {
 
 impl Debug for Fingering {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}) for {}", self.to_str(), self.instrument)
+        write!(
+            f,
+            "({}) for Instrument<{}>",
+            self.to_str(),
+            self.instrument_id
+        )
     }
 }
 
 struct BacktrackState {
-    instrument: &'static StringInstrument,
+    instrument: StringInstrument,
     chord_keys: HashSet<Key>,
     placements: Vec<Option<usize>>,
     sorted_placements: SortedVec<usize>,
@@ -111,10 +173,10 @@ struct BacktrackState {
 }
 
 impl BacktrackState {
-    fn starting(chord: &Chord, instrument: &'static StringInstrument) -> BacktrackState {
+    fn starting(chord: &Chord, instrument: &StringInstrument) -> BacktrackState {
         BacktrackState {
-            instrument,
-            chord_keys: chord.keys().iter().copied().collect(),
+            instrument: instrument.clone(),
+            chord_keys: chord.keys(),
             placements: vec![],
             sorted_placements: SortedVec::new(),
             sorted_notes: SortedVec::new(),
@@ -187,10 +249,31 @@ fn is_in_range(state: &BacktrackState, fret: &usize) -> bool {
             && *fret <= min + MAX_DISPLACEMENT)
 }
 
-pub fn find_fingerings(chord: &Chord, instrument: &'static StringInstrument) -> Vec<Fingering> {
+pub fn find_fingerings(chord: &Chord, instrument: &StringInstrument) -> Vec<Fingering> {
+    if !instrument.has_bass && chord.bass != chord.root {
+        let new_chord = Chord::new(chord.root, chord.variant, chord.root);
+        log::info!(
+            "Downgrading chord {} to {} because Instrument<{}> does not have a bass",
+            chord,
+            new_chord,
+            instrument.id()
+        );
+        return find_fingerings(&new_chord, instrument);
+    }
+    if instrument.strings.len() < 4 {
+        if let Some(new_variant) = THREE_STRING_DOWNGRADES.get(&chord.variant) {
+            let new_chord = Chord::new(chord.root, *new_variant, chord.root);
+            log::info!(
+                "Downgrading chord {} to {} because Instrument<{}> does not have enough strings",
+                chord,
+                new_chord,
+                instrument.id()
+            );
+            return find_fingerings(&new_chord, instrument);
+        }
+    }
     let start = SystemTime::now();
-    let mut chord_keys = chord.keys();
-    chord_keys.insert(chord.bass);
+    let chord_keys = chord.keys();
     let candidates: Vec<Vec<usize>> = instrument
         .strings
         .iter()
@@ -227,7 +310,7 @@ pub fn find_fingerings(chord: &Chord, instrument: &'static StringInstrument) -> 
 
 fn finder_backtrack(
     chord: &Chord,
-    instrument: &'static StringInstrument,
+    instrument: &StringInstrument,
     found_fingerings: &mut Vec<Fingering>,
     candidates: &Vec<Vec<usize>>,
     state: &mut BacktrackState,
@@ -257,7 +340,7 @@ fn finder_backtrack(
 
 fn backtrap_step(
     chord: &Chord,
-    instrument: &'static StringInstrument,
+    instrument: &StringInstrument,
     found_fingerings: &mut Vec<Fingering>,
     candidates: &Vec<Vec<usize>>,
     state: &mut BacktrackState,
@@ -304,7 +387,7 @@ fn get_valid_fingering(
         .collect();
     if fingering_keys == state.chord_keys {
         Ok(Fingering {
-            instrument: state.instrument,
+            instrument_id: state.instrument.id().to_string(),
             placements: state.placements.clone(),
         })
     } else {

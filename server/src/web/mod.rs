@@ -16,17 +16,20 @@ use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use crate::{
+    instrument::Instruments,
     song::{ChordRepository, SeaOrmSongs},
     Opt,
 };
 
 mod chord;
+mod instrument;
 mod song;
 
 #[derive(Clone)]
 pub struct AppState {
     pub songs: Arc<SeaOrmSongs>,
     pub chords: Arc<dyn ChordRepository + Send + Sync>,
+    pub instruments: Arc<dyn Instruments + Send + Sync>,
 }
 
 async fn not_found() -> StatusCode {
@@ -40,6 +43,7 @@ pub async fn run_server(opt: Opt, state: AppState) {
         .route("/api/songs", get(song::songs))
         .route("/api/songs/:id", get(song::api_song))
         .route("/api/add_song", post(song::api_add_song))
+        .route("/api/instruments", get(instrument::get_instruments))
         .nest_service("/static", ServeDir::new(opt.static_dir))
         .fallback(not_found)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))

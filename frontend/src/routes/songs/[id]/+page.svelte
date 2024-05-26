@@ -6,11 +6,15 @@
 	import type { PageData } from './$types';
 	import leftArrowSvg from '$lib/assets/left-arrow.svg';
 	import rightArrowSvg from '$lib/assets/right-arrow.svg';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/stores';
 
 	export let data: PageData;
 	let currentFingerings: { [key: string]: string } = data.fingerings;
+	$: currentFingerings = data.fingerings;
 
-	let firstChord = findFirstChord(data.tablature);
+	let firstChord: string | undefined;
+	$: firstChord = findFirstChord(data.tablature);
 	let fingeringsEnabled: boolean = false;
 	let fingerings: { [key: string]: Promise<string[]> } = {};
 	let selectedChord: string | undefined = undefined;
@@ -18,9 +22,23 @@
 	let selectedChordFingerings: Promise<string[]>;
 	let showOriginal: boolean = false;
 
+	let selectedInstrument: string | undefined;
+	selectedInstrument = data.instrument;
+	$: updateInstrument(selectedInstrument);
+
 	async function loadFingerings(chord: string): Promise<string[]> {
-		let fingerings = await fetch(`/api/chords/GUITAR_STANDARD/${chord}`).then((d) => d.json());
+		let fingerings = await fetch(
+			`/api/chords/${encodeURIComponent(data.instrument)}/${encodeURIComponent(chord)}`
+		).then((d) => d.json());
 		return fingerings;
+	}
+
+	async function updateInstrument(new_instrument: string | undefined) {
+		if (new_instrument && new_instrument != data.instrument) {
+			const url = new URL($page.url);
+			url.searchParams.set('instrument', new_instrument);
+			await goto(url);
+		}
 	}
 
 	$: {
@@ -52,6 +70,14 @@
 </script>
 
 <h1>{data.author} - {data.title}</h1>
+<div>
+	Instrument:
+	<select bind:value={selectedInstrument} class="select select-bordered">
+		{#each data.instruments as instrument}
+			<option value={instrument.id}>{instrument.name}</option>
+		{/each}
+	</select>
+</div>
 
 <div class="flex flex-row bg-gray-100">
 	<div class="flex-auto text-xl m-4 overflow-hidden">

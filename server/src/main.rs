@@ -1,7 +1,9 @@
+use std::fs::File;
+use std::path::Path;
 use std::sync::Arc;
 
-use chorddb::chord::finder::GUITAR_STANDARD;
-use chorddb::song::{PrecomputedChords, SeaOrmSongs};
+use chorddb::instrument::MemoryInstruments;
+use chorddb::song::{CachedChords, FingeringCalculator, SeaOrmSongs};
 use chorddb::web::{run_server, AppState};
 use chorddb::Opt;
 use clap::Parser;
@@ -22,15 +24,33 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let url = std::env::var("DATABASE_URL").expect("Must set DATABASE_URL");
+
+    create_sqlite_db_if_missing(&url);
+
     let songs = SeaOrmSongs::new(
-        Database::connect(url)
+        Database::connect(&url)
             .await
-            .expect("Could not connect to the database"),
+            .unwrap_or_else(|err| panic!("Could not connect to the database @{}: {}", url, err)),
     );
     let state = AppState {
         songs: Arc::new(songs),
-        chords: Arc::new(PrecomputedChords::new(&GUITAR_STANDARD)),
+        chords: Arc::new(CachedChords::new(FingeringCalculator {})),
+        instruments: Arc::new(MemoryInstruments::new()),
     };
 
     run_server(opt, state).await;
+}
+
+const SQLITE_PREFIX: &str = "sqlite://";
+
+fn create_sqlite_db_if_missing(url: &str) {
+    if !url.starts_with(SQLITE_PREFIX) {
+        return;
+    }
+    let path = Path::new(&url[SQLITE_PREFIX.len()..]);
+    if !path.exists() {
+        log::info!("Creating empty database @{}", url);
+        File::create(path)
+            .unwrap_or_else(|err| panic!("Could not create database file @ {}: {}", url, err));
+    }
 }
