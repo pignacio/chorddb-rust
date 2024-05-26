@@ -34,15 +34,10 @@
 	}
 
 	async function updateInstrument(new_instrument: string | undefined) {
-		console.log('updateInstrument', { current: data.instrument, new: new_instrument });
 		if (new_instrument && new_instrument != data.instrument) {
 			const url = new URL($page.url);
 			url.searchParams.set('instrument', new_instrument);
-			console.log('GOTO', {});
 			await goto(url);
-			// console.log('InvalidateAll', { page: $page, data: data });
-			// await invalidateAll();
-			console.log('invalidated', { data: data });
 		}
 	}
 
