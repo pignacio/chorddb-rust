@@ -152,7 +152,7 @@ impl BacktrackState {
     fn starting(chord: &Chord, instrument: &StringInstrument) -> BacktrackState {
         BacktrackState {
             instrument: instrument.clone(),
-            chord_keys: chord.keys().iter().copied().collect(),
+            chord_keys: chord.keys(),
             placements: vec![],
             sorted_placements: SortedVec::new(),
             sorted_notes: SortedVec::new(),
@@ -226,9 +226,18 @@ fn is_in_range(state: &BacktrackState, fret: &usize) -> bool {
 }
 
 pub fn find_fingerings(chord: &Chord, instrument: &StringInstrument) -> Vec<Fingering> {
+    if !instrument.has_bass && chord.bass != chord.root {
+        let new_chord = Chord::new(chord.root, chord.variant, chord.root);
+        log::info!(
+            "Downgrading chord {} to {} because Instrument<{}> does not have a bass",
+            chord,
+            new_chord,
+            instrument.id()
+        );
+        return find_fingerings(&new_chord, instrument);
+    }
     let start = SystemTime::now();
-    let mut chord_keys = chord.keys();
-    chord_keys.insert(chord.bass);
+    let chord_keys = chord.keys();
     let candidates: Vec<Vec<usize>> = instrument
         .strings
         .iter()
