@@ -11,7 +11,6 @@ use axum::{
     Router,
 };
 
-use tokio::io::{stdin, AsyncBufReadExt, BufReader};
 use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
@@ -59,18 +58,8 @@ pub async fn run_server(opt: Opt, state: AppState) {
     let listener = tokio::net::TcpListener::bind(sock_addr).await.unwrap();
 
     axum::serve(listener, app)
-        .with_graceful_shutdown(read_stdin_until_enter())
         .await
         .expect("Unable to start server");
-}
-
-async fn read_stdin_until_enter() {
-    let mut reader = BufReader::new(stdin());
-
-    println!("Waiting for enter to stop server");
-    reader.read_line(&mut String::new()).await.unwrap();
-
-    println!("Stopping server");
 }
 
 async fn hello() -> impl IntoResponse {
