@@ -158,13 +158,13 @@ impl Debug for Fingering {
     }
 }
 
+#[derive(Debug)]
 struct BacktrackState {
     instrument: StringInstrument,
     chord_keys: HashSet<Key>,
     placements: Vec<Option<usize>>,
     sorted_placements: SortedVec<usize>,
     sorted_notes: SortedVec<Note>,
-    sorted_keys: SortedVec<Key>,
     steps: i64,
     checks: i64,
     no_notes: i64,
@@ -180,7 +180,6 @@ impl BacktrackState {
             placements: vec![],
             sorted_placements: SortedVec::new(),
             sorted_notes: SortedVec::new(),
-            sorted_keys: SortedVec::new(),
             steps: 0,
             checks: 0,
             no_notes: 0,
@@ -196,13 +195,16 @@ impl BacktrackState {
             self.sorted_placements.push(new_placement);
             let note = string.note + new_placement as i32;
             self.sorted_notes.push(note);
-            self.sorted_keys.push(note.key());
             log::trace!(
-                "Adding placement on string {:?} fret {}. note: {:?}, key: {:?}",
-                string,
+                "Adding placement on String#{}({}) fret {}. note: {}. State: {}",
+                self.placements.len(),
+                string.note.text(),
                 new_placement,
-                note,
-                note.key()
+                note.text(),
+                self.placements
+                    .iter()
+                    .map(|p| p.map(|x| x.to_string()).unwrap_or("X".to_string()))
+                    .join(",")
             );
         }
     }
@@ -213,15 +215,16 @@ impl BacktrackState {
             let string = &self.instrument.strings[self.placements.len()];
             let note = string.note + removing as i32;
             log::trace!(
-                "Removing placement on string {:?} fret {}. note: {:?}, key: {:?}",
-                string,
-                removing,
-                note,
-                note.key()
+                "Removing placement on String#{}({}). State: {}",
+                self.placements.len() + 1,
+                string.note.text(),
+                self.placements
+                    .iter()
+                    .map(|p| p.map(|x| x.to_string()).unwrap_or("X".to_string()))
+                    .join(",")
             );
             assert_ne!(self.sorted_placements.remove_item(&removing), None);
             assert_ne!(self.sorted_notes.remove_item(&note), None);
-            assert_ne!(self.sorted_keys.remove_item(&note.key()), None);
         }
     }
 
@@ -273,7 +276,7 @@ pub fn find_fingerings(chord: &Chord, instrument: &StringInstrument) -> Vec<Fing
         }
     }
     let start = SystemTime::now();
-    let chord_keys = chord.keys();
+    let chord_keys = chord.keys_with_bass();
     let candidates: Vec<Vec<usize>> = instrument
         .strings
         .iter()
@@ -285,6 +288,10 @@ pub fn find_fingerings(chord: &Chord, instrument: &StringInstrument) -> Vec<Fing
         .collect();
 
     let mut state = BacktrackState::starting(chord, instrument);
+    log::trace!("Starting backtrack with state {:?} and candidates:", state,);
+    for cs in &candidates {
+        log::trace!(" * {:?}", cs);
+    }
     let mut fingerings: Vec<Fingering> = vec![];
 
     finder_backtrack(chord, instrument, &mut fingerings, &candidates, &mut state);
@@ -380,10 +387,10 @@ fn get_valid_fingering(
     }
 
     let fingering_keys: HashSet<Key> = state
-        .sorted_keys
+        .sorted_notes
         .iter()
         .skip(if chord.root == chord.bass { 0 } else { 1 })
-        .copied()
+        .map(|note| note.key)
         .collect();
     if fingering_keys == state.chord_keys {
         Ok(Fingering {
@@ -391,6 +398,12 @@ fn get_valid_fingering(
             placements: state.placements.clone(),
         })
     } else {
+        log::trace!(
+            "Fingering keys did not cover all the chord. Found: {:?}, expected: {:?}. All sorted notes: {:?}",
+            fingering_keys,
+            state.chord_keys,
+            state.sorted_notes,
+        );
         // state.bad_notes += 1;
         Err(format!(
             "Bad notes! Expected {:?} but got {:?}",
@@ -477,5 +490,20 @@ mod tests {
                 fingering, chord, msg
             )
         }
+    }
+
+    #[test]
+    fn chords_with_basses() {
+        let chord = Chord::parse("B/A").expect("Invalid chord");
+
+        let fingerings = find_fingerings(&chord, &GUITAR_STANDARD);
+
+        assert_ne!(fingerings.len(), 0);
+
+        let first = fingerings.first().expect("Fingerings should not be empty");
+        assert_eq!(
+            first.placements(),
+            &[None, Some(0), Some(4), Some(4), Some(4), Some(2)]
+        );
     }
 }

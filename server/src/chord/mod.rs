@@ -144,6 +144,10 @@ impl Note {
     pub fn octave(&self) -> i32 {
         self.octave
     }
+
+    pub fn text(&self) -> String {
+        format!("{}{}", self.key.text(), self.octave)
+    }
 }
 
 impl Add<i32> for Note {
@@ -285,6 +289,12 @@ impl Chord {
             .map(|interval| (root_ordinal + interval) % 12)
             .map(|o| ALL_KEYS[o])
             .collect()
+    }
+
+    pub fn keys_with_bass(&self) -> HashSet<Key> {
+        let mut keys = self.keys();
+        keys.insert(self.bass);
+        keys
     }
 }
 
