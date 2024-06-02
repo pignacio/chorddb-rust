@@ -6,6 +6,7 @@
 	import type { PageData } from './$types';
 	import leftArrowSvg from '$lib/assets/left-arrow.svg';
 	import rightArrowSvg from '$lib/assets/right-arrow.svg';
+	import editSvg from '$lib/assets/edit.svg';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
 
@@ -69,7 +70,14 @@
 	}
 </script>
 
-<h1>{data.author} - {data.title}</h1>
+<h1>
+	<div>
+		{data.author} - {data.title}
+		<a href="/songs/{data.id}/edit">
+			<img src={editSvg} alt="Edit this song" class="size-6" />
+		</a>
+	</div>
+</h1>
 <div>
 	Instrument:
 	<select bind:value={selectedInstrument} class="select select-bordered">

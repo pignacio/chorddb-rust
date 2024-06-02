@@ -10,6 +10,7 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
 	const data = await res.json();
 	const instruments = unpackOrThrow(await fetchInstruments(fetch));
 	return {
+		id: data.header.id,
 		author: data.header.author,
 		title: data.header.title,
 		tablature: { lines: data.tablature },
