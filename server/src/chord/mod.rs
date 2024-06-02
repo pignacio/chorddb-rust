@@ -6,10 +6,12 @@ use std::{
 
 use itertools::Itertools;
 use regex::Regex;
+use sea_orm::Iterable;
+use strum::EnumIter;
 
 pub mod finder;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, EnumIter)]
 pub enum Key {
     C,
     Db,
@@ -25,25 +27,9 @@ pub enum Key {
     B,
 }
 
-// This must honor key == ALL_KEYS[key.ordinal()]
-pub const ALL_KEYS: [Key; 12] = [
-    Key::C,
-    Key::Db,
-    Key::D,
-    Key::Eb,
-    Key::E,
-    Key::F,
-    Key::Gb,
-    Key::G,
-    Key::Ab,
-    Key::A,
-    Key::Bb,
-    Key::B,
-];
-
 lazy_static! {
-    static ref KEYS_BY_NAME: HashMap<&'static str, &'static Key> = ALL_KEYS
-        .iter()
+    static ref ALL_KEYS: Vec<Key> = Key::iter().collect();
+    static ref KEYS_BY_NAME: HashMap<&'static str, Key> = Key::iter()
         .flat_map(|k| k
             .valid_names()
             .into_iter()
@@ -54,7 +40,7 @@ lazy_static! {
 
 impl Key {
     fn parse(source: &str) -> Option<&'static Key> {
-        KEYS_BY_NAME.get(source).copied()
+        KEYS_BY_NAME.get(source)
     }
 
     fn ordinal(&self) -> usize {
@@ -170,7 +156,7 @@ impl Ord for Note {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
 pub enum Variant {
     Major,
     Minor,
@@ -179,26 +165,18 @@ pub enum Variant {
     MinorSixth,
     SuspendedSecond,
     AddNinth,
+    Diminished,
+    Augmented,
 }
 
-pub const ALL_VARIANTS: [Variant; 7] = [
-    Variant::Major,
-    Variant::Minor,
-    Variant::Seventh,
-    Variant::MinorSeventh,
-    Variant::MinorSixth,
-    Variant::SuspendedSecond,
-    Variant::AddNinth,
-];
-
 lazy_static! {
-    static ref VARIANTS_BY_TEXT: HashMap<&'static str, &'static Variant> =
-        ALL_VARIANTS.iter().map(|v| (v.text(), v)).collect();
+    static ref VARIANTS_BY_TEXT: HashMap<&'static str, Variant> =
+        Variant::iter().map(|v| (v.text(), v)).collect();
 }
 
 impl Variant {
     pub fn parse(source: &str) -> Option<&'static Variant> {
-        VARIANTS_BY_TEXT.get(source).copied()
+        VARIANTS_BY_TEXT.get(source)
     }
 
     pub fn text(&self) -> &'static str {
@@ -210,6 +188,8 @@ impl Variant {
             Variant::MinorSixth => "m6",
             Variant::SuspendedSecond => "sus2",
             Variant::AddNinth => "add9",
+            Variant::Diminished => "dim",
+            Variant::Augmented => "aug",
         }
     }
 
@@ -222,6 +202,8 @@ impl Variant {
             Variant::MinorSixth => vec![0, 3, 7, 9],
             Variant::SuspendedSecond => vec![0, 2, 7],
             Variant::AddNinth => vec![0, 4, 7, 14],
+            Variant::Diminished => vec![0, 3, 6],
+            Variant::Augmented => vec![0, 4, 8],
         }
     }
 }
@@ -229,7 +211,7 @@ impl Variant {
 lazy_static! {
     static ref KEY_PATTERN: String = format!("(?:{})", KEYS_BY_NAME.keys().join("|"));
     static ref VARIANT_PATTERN: String =
-        format!("(?:{})", ALL_VARIANTS.iter().map(|v| v.text()).join("|"));
+        format!("(?:{})", Variant::iter().map(|v| v.text()).join("|"));
     static ref CHORD_PATTERN: String = format!(
         "^(?<root>{})(?<variant>{})(?:/(?<bass>{}))?$",
         *KEY_PATTERN, *VARIANT_PATTERN, *KEY_PATTERN
@@ -321,15 +303,15 @@ mod tests {
 
     #[test]
     fn validate_key_ordinals() {
-        for key in &ALL_KEYS {
-            assert_eq!(*key, ALL_KEYS[key.ordinal()]);
+        for key in Key::iter() {
+            assert_eq!(key, ALL_KEYS[key.ordinal()]);
         }
     }
 
     #[test]
     fn validate_key_parsing() {
-        for key in &ALL_KEYS {
-            assert_eq!(key, Key::parse(key.text()).unwrap());
+        for key in Key::iter() {
+            assert_eq!(key, *Key::parse(key.text()).unwrap());
         }
     }
 
@@ -341,20 +323,20 @@ mod tests {
 
     #[test]
     fn validate_all_chords_parse() {
-        for root in &ALL_KEYS {
-            for variant in &ALL_VARIANTS {
+        for root in Key::iter() {
+            for variant in Variant::iter() {
                 let chord = parse_chord(format!("{}{}", root.text(), variant.text())).unwrap();
-                assert_eq!(&chord.root, root);
-                assert_eq!(&chord.variant, variant);
-                assert_eq!(&chord.bass, root);
+                assert_eq!(chord.root, root);
+                assert_eq!(chord.variant, variant);
+                assert_eq!(chord.bass, root);
 
-                for bass in &ALL_KEYS {
+                for bass in Key::iter() {
                     let chord =
                         parse_chord(format!("{}{}/{}", root.text(), variant.text(), bass.text()))
                             .unwrap();
-                    assert_eq!(&chord.root, root);
-                    assert_eq!(&chord.variant, variant);
-                    assert_eq!(&chord.bass, bass);
+                    assert_eq!(chord.root, root);
+                    assert_eq!(chord.variant, variant);
+                    assert_eq!(chord.bass, bass);
                 }
             }
         }

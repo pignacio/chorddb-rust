@@ -6,12 +6,13 @@ use std::{
 
 use dashmap::DashMap;
 use itertools::Itertools;
+use sea_orm::Iterable;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::chord::{
     finder::{find_fingerings, Fingering, StringInstrument},
-    Chord, ALL_KEYS, ALL_VARIANTS,
+    Chord, Key, Variant,
 };
 
 mod database;
@@ -192,9 +193,9 @@ impl PrecomputedChords {
 
         let start = SystemTime::now();
         log::info!("Precomputing fingerings for all chords");
-        for root in ALL_KEYS {
+        for root in Key::iter() {
             log::info!("Precomputing all chords with root {:?}", root);
-            for variant in ALL_VARIANTS {
+            for variant in Variant::iter() {
                 // for bass in ALL_KEYS {
                 let chord = Chord::new(root, variant, root);
                 // let chord = Chord::new(root, variant, bass);
