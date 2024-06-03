@@ -21,9 +21,9 @@ pub use database::SeaOrmSongs;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SongHeader {
-    id: Uuid,
-    author: String,
-    title: String,
+    pub id: Uuid,
+    pub author: String,
+    pub title: String,
 }
 
 impl SongHeader {
@@ -42,8 +42,8 @@ impl SongHeader {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Song {
-    header: SongHeader,
-    contents: String,
+    pub header: SongHeader,
+    pub contents: String,
 }
 
 impl Song {

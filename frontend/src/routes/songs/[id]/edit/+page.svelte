@@ -1,40 +1,19 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
-	import { SongDetailsSchema } from '$lib/api/song';
+	import { SongDetailsSchema, patchSong } from '$lib/api/song';
 	import { superForm } from 'sveltekit-superforms';
 	import { valibot } from 'sveltekit-superforms/adapters';
 
 	export let data: PageData;
 	let submitFailed = false;
-	let formElement: HTMLElement;
 	let { form, enhance, constraints } = superForm(data.form, {
 		SPA: true,
 		validators: valibot(SongDetailsSchema),
 		onUpdate: async ({ form }) => {
 			if (form.valid) {
-				console.log('IsValid!', form.data);
-				return;
-				let response = await fetch('/api/add_song', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(form.data)
-				});
-
-				if (response.ok) {
-					let data = await response.json();
-					return await goto(`/songs/${data.id}`);
-				} else {
+				const result = await patchSong(fetch, data.id, form.data);
+				if (!result.success) {
 					submitFailed = true;
-				}
-			} else {
-				let errors = form.errors.author || [];
-				if (errors.length > 0) {
-					let input: HTMLObjectElement | null = formElement.querySelector('[name=author]');
-					input?.setCustomValidity(errors[0]);
-					input?.reportValidity();
 				}
 			}
 		}
@@ -46,7 +25,7 @@
 {#if submitFailed}
 	<div class="alert alert-danger">The song creation failed :(</div>
 {/if}
-<form class="mt-4" method="POST" use:enhance bind:this={formElement}>
+<form class="mt-4" method="POST" use:enhance>
 	<div class="grid grid-cols-2 gap-4 max-w-4xl">
 		<input
 			type="text"

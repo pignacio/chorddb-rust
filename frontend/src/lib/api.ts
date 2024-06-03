@@ -16,10 +16,47 @@ export interface FetchFailure {
 	success: false;
 	response: Response;
 	message: string;
+	body?: unknown;
 	cause?: unknown;
 }
 
 export type FetchResult<T> = FetchSuccess<T> | FetchFailure;
+
+function fetchSuccess<T>(response: Response, payload: T): FetchSuccess<T> {
+	return {
+		success: true,
+		response: response,
+		payload: payload
+	};
+}
+
+function fetchFailure(
+	response: Response,
+	message: string,
+	body?: unknown,
+	cause?: unknown
+): FetchFailure {
+	return {
+		success: false,
+		response: response,
+		message: message,
+		cause: cause,
+		body: body
+	};
+}
+
+const API_RESULT_CHECK_SCHEMA = v.object({
+	success: v.boolean(),
+	message: v.string()
+});
+
+function apiResultSchema<S extends v.BaseSchema>(schema: S) {
+	return v.object({
+		success: v.boolean(),
+		message: v.string(),
+		payload: v.nullish(schema)
+	});
+}
 
 export function unpackOrRedirect<T>(result: FetchResult<T>): T {
 	if (result.success) {
@@ -37,7 +74,10 @@ export function unpackOrThrow<T>(result: FetchResult<T>): T {
 	if (result.success) {
 		return result.payload;
 	}
-	console.error('API CALL FAILED', result);
+	console.error('API CALL FAILED', {
+		url: result.response.url,
+		result: result
+	});
 	throw result;
 }
 
@@ -51,45 +91,80 @@ export async function redirectingApiCall<TSchema extends v.BaseSchema>(
 	return unpackOrRedirect(result);
 }
 
+function matchesApiResultShape(body: unknown) {
+	return v.safeParse(API_RESULT_CHECK_SCHEMA, body).success;
+}
+
+export async function voidApiCall(
+	fetch: FetchApi,
+	url: string,
+	init?: RequestInit | undefined
+): Promise<FetchResult<void>> {
+	const result = await apiCall(fetch, url, v.unknown(), init);
+	if (result.success) {
+		return fetchSuccess(result.response, undefined);
+	} else {
+		return fetchFailure(result.response, result.message, result.body, result.cause);
+	}
+}
+
 export async function apiCall<TSchema extends v.BaseSchema>(
 	fetch: FetchApi,
 	url: string,
-	schema: TSchema
+	schema: TSchema,
+	init?: RequestInit | undefined
 ): Promise<FetchResult<v.Output<TSchema>>> {
-	const response = await fetch(url);
+	const response = await fetch(url, init);
 	if (response.ok) {
 		try {
 			const body: unknown = await response.json();
-			const parseResult = await v.safeParseAsync(schema, body);
-			if (parseResult.success) {
-				return {
-					success: true,
-					response: response,
-					payload: parseResult.output
-				};
+			if (matchesApiResultShape(body)) {
+				const parseResult = v.safeParse(apiResultSchema(schema), body);
+				if (!parseResult.success) {
+					return fetchResultFromParseFailure(parseResult, body, response);
+				}
+				const output = parseResult.output;
+				if (output.success) {
+					return fetchSuccess(response, output.payload);
+				} else {
+					return fetchFailure(response, output.message);
+				}
+			} else {
+				const parseResult = v.safeParse(schema, body);
+				if (!parseResult.success) {
+					return fetchResultFromParseFailure(parseResult, body, response);
+				} else {
+					return fetchSuccess(response, parseResult.output);
+				}
 			}
-			const firstIssue = parseResult.issues[0];
-			const firstPath = firstIssue.path?.map((p) => p.key).join('.');
-			return {
-				success: false,
-				response: response,
-				message: `Failed to validate response. Got ${parseResult.issues.length} issues. First @(${firstPath}) ${firstIssue.message}`,
-				cause: parseResult.issues
-			} satisfies FetchFailure;
 		} catch (err) {
-			return {
-				success: false,
-				response: response,
-				message: `Could not parse JSON payload. Err: ${err}`
-			} satisfies FetchFailure;
+			return fetchFailure(response, `Could not parse JSON payload. Err: ${err}`);
 		}
 	} else {
-		return {
-			success: false,
-			response: response,
-			message: `HTTP call failed`
-		} satisfies FetchFailure;
+		return fetchFailure(response, `HTTP call failed`);
 	}
+}
+
+function fetchResultFromParseFailure<S extends v.BaseSchema>(
+	parseResult: v.SafeParseResult<S>,
+	body: unknown,
+	response: Response
+): FetchFailure {
+	if (parseResult.success) {
+		return fetchFailure(
+			response,
+			'Tried to construct a fetch failure from a valid parse result!',
+			body
+		);
+	}
+	const firstIssue = parseResult.issues[0];
+	const firstPath = firstIssue.path?.map((p) => p.key).join('.');
+	return fetchFailure(
+		response,
+		`Failed to validate response. Got ${parseResult.issues.length} issues. First @(${firstPath}) ${firstIssue.message}`,
+		body,
+		parseResult.issues
+	);
 }
 
 export function encodeQueryString(params: { [key: string]: string | null | undefined }): string {

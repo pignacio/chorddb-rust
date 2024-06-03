@@ -6,8 +6,7 @@ use std::{
 
 use axum::{
     http::StatusCode,
-    response::IntoResponse,
-    routing::{get, post},
+    routing::{get, patch, post},
     Router,
 };
 
@@ -20,6 +19,7 @@ use crate::{
     Opt,
 };
 
+mod api;
 mod chord;
 mod instrument;
 mod song;
@@ -37,10 +37,10 @@ async fn not_found() -> StatusCode {
 
 pub async fn run_server(opt: Opt, state: AppState) {
     let app = Router::new()
-        .route("/api/hello", get(hello))
         .route("/api/chords/:instrument/:chord", get(chord::chords))
         .route("/api/songs", get(song::songs))
         .route("/api/songs/:id", get(song::api_song))
+        .route("/api/songs/:id", patch(song::patch_song))
         .route("/api/add_song", post(song::api_add_song))
         .route("/api/instruments", get(instrument::get_instruments))
         .nest_service("/static", ServeDir::new(opt.static_dir))
@@ -60,8 +60,4 @@ pub async fn run_server(opt: Opt, state: AppState) {
     axum::serve(listener, app)
         .await
         .expect("Unable to start server");
-}
-
-async fn hello() -> impl IntoResponse {
-    "hello from server!"
 }

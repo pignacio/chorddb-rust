@@ -1,4 +1,5 @@
-import { apiCall, encodeQueryString, type FetchApi, type FetchResult } from '$lib/api';
+import { goto } from '$app/navigation';
+import { apiCall, encodeQueryString, voidApiCall, type FetchApi, type FetchResult } from '$lib/api';
 import * as v from 'valibot';
 
 export const SongDetailsSchema = v.object({
@@ -37,11 +38,37 @@ export type SongQuery = {
 	instrument?: string | null;
 };
 
+export function getSongUrl(songId: string, query?: SongQuery) {
+	let url = `/api/songs/${encodeURIComponent(songId)}`;
+	if (query) {
+		url += `?${encodeQueryString(query)}`;
+	}
+	return url;
+}
+
 export async function loadSong(
 	fetch: FetchApi,
 	songId: string,
 	query: SongQuery
 ): Promise<FetchResult<Song>> {
-	const url = `/api/songs/${songId}?${encodeQueryString(query)}`;
-	return apiCall(fetch, url, SongSchema);
+	return apiCall(fetch, getSongUrl(songId, query), SongSchema);
+}
+
+export async function patchSong(
+	fetch: FetchApi,
+	songId: string,
+	details: SongDetails
+): Promise<FetchResult<void>> {
+	const result = await voidApiCall(fetch, getSongUrl(songId), {
+		method: 'PATCH',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify(details)
+	});
+
+	if (result.success) {
+		await goto(`/songs/${songId}`);
+	}
+	return result;
 }

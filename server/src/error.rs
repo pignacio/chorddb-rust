@@ -1,13 +1,15 @@
 use std::{error::Error, fmt::Display};
 
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::{http::StatusCode, response::IntoResponse, Json};
 use sea_orm::DbErr;
+use serde::Serialize;
 
 #[derive(Debug)]
 pub enum ChordDbError {
     HttpNotFound,
     Database(DbErr),
     InvalidData(String),
+    BadRequest(String),
 }
 
 impl Display for ChordDbError {
@@ -16,6 +18,7 @@ impl Display for ChordDbError {
             ChordDbError::Database(e) => format!("Database: {}", e),
             ChordDbError::HttpNotFound => "HttpNotFound".to_string(),
             ChordDbError::InvalidData(msg) => format!("InvalidData: {}", msg),
+            ChordDbError::BadRequest(msg) => format!("BadRequest: {}", msg),
         };
         f.write_fmt(format_args!("ChordDbError::{}", message))
     }
@@ -25,8 +28,7 @@ impl Error for ChordDbError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ChordDbError::Database(e) => Some(e),
-            ChordDbError::HttpNotFound => None,
-            ChordDbError::InvalidData(_) => None,
+            _ => None,
         }
     }
 }
@@ -37,10 +39,30 @@ impl From<DbErr> for ChordDbError {
     }
 }
 
+#[derive(Debug, Serialize)]
+struct SimpleError {
+    message: String,
+}
+
+impl SimpleError {
+    fn new<S: AsRef<str>>(message: S) -> Self {
+        Self {
+            message: message.as_ref().to_string(),
+        }
+    }
+}
+
 impl IntoResponse for ChordDbError {
     fn into_response(self) -> axum::response::Response {
         match self {
-            ChordDbError::HttpNotFound => StatusCode::NOT_FOUND.into_response(),
+            ChordDbError::HttpNotFound => (
+                StatusCode::NOT_FOUND,
+                Json(SimpleError::new("404 Not Found")),
+            )
+                .into_response(),
+            ChordDbError::BadRequest(message) => {
+                (StatusCode::BAD_REQUEST, Json(SimpleError::new(message))).into_response()
+            }
             _ => {
                 log::warn!("Request failed! {}", self);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong :(").into_response()

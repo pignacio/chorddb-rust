@@ -6,9 +6,9 @@
 	import type { PageData } from './$types';
 	import leftArrowSvg from '$lib/assets/left-arrow.svg';
 	import rightArrowSvg from '$lib/assets/right-arrow.svg';
-	import editSvg from '$lib/assets/edit.svg';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import EditSvg from '$lib/svg/EditSvg.svelte';
 
 	export let data: PageData;
 	let currentFingerings: { [key: string]: string } = data.fingerings;
@@ -70,13 +70,11 @@
 	}
 </script>
 
-<h1>
-	<div>
-		{data.author} - {data.title}
-		<a href="/songs/{data.id}/edit">
-			<img src={editSvg} alt="Edit this song" class="size-6" />
-		</a>
-	</div>
+<h1 class="flex items-end">
+	{data.author} - {data.title}
+	<a href="/songs/{data.id}/edit">
+		<EditSvg alt="Edit this song" class="size-8 ml-4 hover:stroke-blue-800" />
+	</a>
 </h1>
 <div>
 	Instrument:
