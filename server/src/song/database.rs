@@ -1,7 +1,11 @@
-use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::{sea_query::OnConflict, DatabaseConnection, EntityTrait, Iterable};
 use uuid::Uuid;
 
-use crate::error::{ChordDbError, ChordDbResult};
+use crate::{
+    entities::prelude::Song as SongEntity,
+    entities::song,
+    error::{ChordDbError, ChordDbResult},
+};
 
 use super::{Song, SongHeader};
 
@@ -9,7 +13,7 @@ pub struct SeaOrmSongs {
     db: DatabaseConnection,
 }
 
-fn build_header(model: &crate::entities::song::Model) -> ChordDbResult<SongHeader> {
+fn build_header(model: &song::Model) -> ChordDbResult<SongHeader> {
     Uuid::parse_str(&model.id)
         .map_err(|err| {
             ChordDbError::InvalidData(format!("Invalid uuid: '{}'. Err: {}", model.id, err))
@@ -27,28 +31,31 @@ impl SeaOrmSongs {
     }
 
     pub async fn all_songs(&self) -> ChordDbResult<Vec<SongHeader>> {
-        let entities = crate::entities::prelude::Song::find().all(&self.db).await?;
+        let entities = SongEntity::find().all(&self.db).await?;
         entities.iter().map(build_header).collect()
     }
 
-    pub async fn add_song(&self, song: Song) -> ChordDbResult<()> {
-        let model = crate::entities::song::Model {
+    pub async fn upsert_song(&self, song: Song) -> ChordDbResult<()> {
+        let model = song::Model {
             id: song.id().to_string(),
             author: song.author().to_string(),
             title: song.title().to_string(),
             tablature: song.contents,
         };
 
-        crate::entities::prelude::Song::insert(crate::entities::song::ActiveModel::from(model))
+        SongEntity::insert(song::ActiveModel::from(model))
+            .on_conflict(
+                OnConflict::column(song::Column::Id)
+                    .update_columns(song::Column::iter())
+                    .to_owned(),
+            )
             .exec(&self.db)
             .await?;
         Ok(())
     }
 
     pub async fn get_song(&self, id: &Uuid) -> ChordDbResult<Option<Song>> {
-        let song = crate::entities::prelude::Song::find_by_id(*id)
-            .one(&self.db)
-            .await?;
+        let song = SongEntity::find_by_id(*id).one(&self.db).await?;
         Ok(match song {
             Some(model) => Some(Song {
                 header: build_header(&model)?,

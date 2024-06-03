@@ -3,10 +3,7 @@ use axum::{
     Json,
 };
 
-use crate::chord::{
-    finder::{Fingering, StringInstrument, MIMI},
-    Chord,
-};
+use crate::chord::{finder::Fingering, Chord};
 
 use super::AppState;
 

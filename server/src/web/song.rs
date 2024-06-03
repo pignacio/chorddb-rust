@@ -15,7 +15,7 @@ use crate::{
     song::{Song, SongHeader},
 };
 
-use super::AppState;
+use super::{api::SimpleApiResult, AppState};
 
 #[derive(Debug, PartialEq, Eq, Serialize)]
 struct ChordModel {
@@ -46,7 +46,7 @@ pub async fn add_song(
     let id = Uuid::new_v4();
     let song = Song::new(id, payload.author, payload.title, payload.contents);
 
-    songs.add_song(song).await?;
+    songs.upsert_song(song).await?;
 
     Ok(id)
 }
@@ -215,4 +215,49 @@ pub async fn api_song(
     };
 
     Ok(Json(model))
+}
+
+#[derive(Deserialize)]
+pub struct SongDetails {
+    author: Option<String>,
+    title: Option<String>,
+    contents: Option<String>,
+}
+
+impl SongDetails {
+    fn is_empty(&self) -> bool {
+        self.author.is_none() && self.title.is_none() && self.contents.is_none()
+    }
+}
+
+pub async fn patch_song(
+    State(AppState { songs, .. }): State<AppState>,
+    Path(id): Path<String>,
+    Json(payload): Json<SongDetails>,
+) -> ChordDbResult<Json<SimpleApiResult>> {
+    let Some(uuid) = Uuid::parse_str(&id).ok() else {
+        return Err(ChordDbError::HttpNotFound);
+    };
+    let Some(mut song) = songs.get_song(&uuid).await? else {
+        return Err(ChordDbError::HttpNotFound);
+    };
+    if payload.is_empty() {
+        return Err(ChordDbError::BadRequest(
+            "All song fields where empty".to_string(),
+        ));
+    }
+
+    if let Some(author) = payload.author {
+        song.header.author = author
+    }
+    if let Some(title) = payload.title {
+        song.header.title = title
+    }
+    if let Some(contents) = payload.contents {
+        song.contents = contents
+    }
+
+    songs.upsert_song(song).await?;
+
+    Ok(Json(SimpleApiResult::simple_success("Patch successful")))
 }
