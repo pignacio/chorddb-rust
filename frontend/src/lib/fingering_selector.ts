@@ -1,4 +1,6 @@
+import type { Fingering } from './api/fingerings';
+
 export interface FingeringChange {
-  previous: string,
-  current: string,
+	previous: Fingering;
+	current: Fingering;
 }

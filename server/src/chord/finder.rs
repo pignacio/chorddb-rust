@@ -136,14 +136,18 @@ impl Fingering {
             .placements
             .iter()
             .any(|x| matches!(x, Some(n) if *n > 9));
-        self.placements
-            .iter()
-            .map(|x| x.map(|n| n.to_string()).unwrap_or("X".to_owned()))
-            .join(if need_comma { "," } else { "" })
+        self.frets().join(if need_comma { "," } else { "" })
     }
 
     pub fn placements(&self) -> &[Option<usize>] {
         &self.placements
+    }
+
+    pub fn frets(&self) -> Vec<String> {
+        self.placements
+            .iter()
+            .map(|x| x.map(|n| n.to_string()).unwrap_or("X".to_string()))
+            .collect()
     }
 }
 

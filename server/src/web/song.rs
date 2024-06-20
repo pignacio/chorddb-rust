@@ -15,7 +15,7 @@ use crate::{
     song::{Song, SongHeader},
 };
 
-use super::{api::SimpleApiResult, AppState};
+use super::{api::SimpleApiResult, chord::FingeringModel, AppState};
 
 #[derive(Debug, PartialEq, Eq, Serialize)]
 struct ChordModel {
@@ -146,7 +146,7 @@ struct SongModel {
     header: SongHeader,
     contents: String,
     tablature: Vec<Vec<LineBitModel>>,
-    fingerings: HashMap<String, String>,
+    fingerings: HashMap<String, FingeringModel>,
     original: String,
     instrument: String,
 }
@@ -195,13 +195,13 @@ pub async fn api_song(
     let tab = parse_tablature(song.contents());
     let serialized_tab = tab.iter().map(serialize_line).collect();
 
-    let fingerings: HashMap<String, String> = extract_chords(tab)
+    let fingerings: HashMap<String, FingeringModel> = extract_chords(tab)
         .iter()
         .filter_map(|c| {
             chords
                 .get_fingerings(&instrument, c)
                 .first()
-                .map(|f| (c.text(), f.to_str()))
+                .map(|f| (c.text(), f.into()))
         })
         .collect();
 

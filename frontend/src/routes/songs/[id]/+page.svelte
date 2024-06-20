@@ -2,6 +2,7 @@
 	import { slide } from 'svelte/transition';
 	import Tablature from '$lib/Tablature.svelte';
 	import { findFirstChord } from '$lib/tablature';
+	import { loadFingerings, type Fingering } from '$lib/api/fingerings';
 	import FingeringSelector from '$lib/FingeringSelector.svelte';
 	import type { PageData } from './$types';
 	import leftArrowSvg from '$lib/assets/left-arrow.svg';
@@ -9,35 +10,29 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import EditSvg from '$lib/svg/EditSvg.svelte';
+	import { unpackOrThrow } from '$lib/api';
 
 	export let data: PageData;
-	let currentFingerings: { [key: string]: string } = data.fingerings;
+	let currentFingerings: { [key: string]: Fingering } = data.fingerings;
 	$: currentFingerings = data.fingerings;
 
 	let firstChord: string | undefined;
 	$: firstChord = findFirstChord(data.tablature);
 	let fingeringsEnabled: boolean = false;
-	let fingerings: { [key: string]: Promise<string[]> } = {};
+	let fingerings: { [key: string]: Promise<Fingering[]> } = {};
 	let selectedChord: string | undefined = undefined;
 	let tabSelectedChord: string | undefined = undefined;
-	let selectedChordFingerings: Promise<string[]>;
+	let selectedChordFingerings: Promise<Fingering[]>;
 	let showOriginal: boolean = false;
 
 	let selectedInstrument: string | undefined;
 	selectedInstrument = data.instrument;
 	$: updateInstrument(selectedInstrument);
 
-	async function loadFingerings(chord: string): Promise<string[]> {
-		let fingerings = await fetch(
-			`/api/chords/${encodeURIComponent(data.instrument)}/${encodeURIComponent(chord)}`
-		).then((d) => d.json());
-		return fingerings;
-	}
-
-	async function updateInstrument(new_instrument: string | undefined) {
-		if (new_instrument && new_instrument != data.instrument) {
+	async function updateInstrument(newInstrument: string | undefined) {
+		if (newInstrument && newInstrument != data.instrument) {
 			const url = new URL($page.url);
-			url.searchParams.set('instrument', new_instrument);
+			url.searchParams.set('instrument', newInstrument);
 			await goto(url);
 		}
 	}
@@ -59,10 +54,14 @@
 
 		if (selectedChord) {
 			if (!(selectedChord in fingerings)) {
-				fingerings[selectedChord] = loadFingerings(selectedChord);
+				fingerings[selectedChord] = myLoadFingerings(selectedChord);
 			}
 			selectedChordFingerings = fingerings[selectedChord];
 		}
+	}
+
+	async function myLoadFingerings(chord: string): Promise<Fingering[]> {
+		return loadFingerings(fetch, data.instrument, chord).then(unpackOrThrow);
 	}
 
 	async function toggleOriginal() {
