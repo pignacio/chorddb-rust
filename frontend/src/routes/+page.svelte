@@ -4,6 +4,8 @@
 	import type { PageData } from './$types';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { valibot } from 'sveltekit-superforms/adapters';
+	import BackspaceSvg from '$lib/svg/BackspaceSvg.svelte';
+	import MusicalNote from '$lib/svg/MusicalNote.svelte';
 
 	export let data: PageData;
 	let submitFailed = false;
@@ -39,6 +41,20 @@
 	});
 </script>
 
+<h1>Songs</h1>
+
+<ul class="text-xl">
+	{#each data.songs as { id, author, title }}
+		<li class="flex">
+			<MusicalNote class="size-6 mr-2" />
+			<a href="/songs/{id}">{author} - {title}</a>
+			<button type="button" on:click={() => alert('Hola')}>
+				<BackspaceSvg class="ml-2 size-6 stroke-red-500 hover:stroke-red-300" />
+			</button>
+		</li>
+	{/each}
+</ul>
+
 <h1>Add Song</h1>
 
 {#if submitFailed}
@@ -70,13 +86,3 @@
 	</div>
 	<button class="btn btn-primary text-xl mt-4 w-32" type="submit">Add</button>
 </form>
-
-<h1>Songs</h1>
-
-<ul class="text-xl list-inside list-image-[url($lib/assets/musical-note.svg)]">
-	{#each data.songs as { id, author, title }}
-		<li>
-			<a href="/songs/{id}">{author} - {title}</a>
-		</li>
-	{/each}
-</ul>
