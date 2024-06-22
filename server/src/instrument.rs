@@ -22,6 +22,12 @@ impl MemoryInstruments {
     }
 }
 
+impl Default for MemoryInstruments {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl Instruments for MemoryInstruments {
     async fn get_instrument(&self, id: &str) -> Option<StringInstrument> {
