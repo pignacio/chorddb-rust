@@ -12,7 +12,7 @@ use crate::{
     chord::{finder::GUITAR_STANDARD, Chord},
     error::{ChordDbError, ChordDbResult},
     parser::{parse_tablature, Comp, Line, LineBit},
-    song::{Song, SongHeader},
+    song::{SeaOrmSongs, Song, SongHeader},
 };
 
 use super::{api::SimpleApiResult, chord::FingeringModel, AppState};
@@ -230,17 +230,34 @@ impl SongDetails {
     }
 }
 
+async fn load_song(id: &str, songs: &SeaOrmSongs) -> ChordDbResult<Song> {
+    let Some(uuid) = Uuid::parse_str(id).ok() else {
+        return Err(ChordDbError::HttpNotFound);
+    };
+    let Some(song) = songs.get_song(&uuid).await? else {
+        return Err(ChordDbError::HttpNotFound);
+    };
+
+    Ok(song)
+}
+
+pub async fn delete_song(
+    State(AppState { songs, .. }): State<AppState>,
+    Path(id): Path<String>,
+) -> ChordDbResult<Json<SimpleApiResult>> {
+    let song = load_song(&id, &songs).await?;
+
+    songs.delete_song(song.id()).await?;
+
+    Ok(Json(SimpleApiResult::simple_success("Delete successful")))
+}
+
 pub async fn patch_song(
     State(AppState { songs, .. }): State<AppState>,
     Path(id): Path<String>,
     Json(payload): Json<SongDetails>,
 ) -> ChordDbResult<Json<SimpleApiResult>> {
-    let Some(uuid) = Uuid::parse_str(&id).ok() else {
-        return Err(ChordDbError::HttpNotFound);
-    };
-    let Some(mut song) = songs.get_song(&uuid).await? else {
-        return Err(ChordDbError::HttpNotFound);
-    };
+    let mut song = load_song(&id, &songs).await?;
     if payload.is_empty() {
         return Err(ChordDbError::BadRequest(
             "All song fields where empty".to_string(),

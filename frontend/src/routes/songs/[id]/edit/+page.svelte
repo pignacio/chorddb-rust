@@ -23,7 +23,7 @@
 <h1>Editing Song&lt;{data.id}&gt;</h1>
 
 {#if submitFailed}
-	<div class="alert alert-danger">The song creation failed :(</div>
+	<div class="alert alert-danger">The song update failed :(</div>
 {/if}
 <form class="mt-4" method="POST" use:enhance>
 	<div class="grid grid-cols-2 gap-4 max-w-4xl">

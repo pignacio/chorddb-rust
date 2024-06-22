@@ -1,9 +1,10 @@
+import { unpackOrThrow } from '$lib/api';
+import { loadSongs } from '$lib/api/song';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch }) => {
-	const res = await fetch('/api/songs');
-	const songs = await res.json();
+	const songs = unpackOrThrow(await loadSongs(fetch));
 	return {
-		songs: await songs
+		songs: songs
 	};
 };

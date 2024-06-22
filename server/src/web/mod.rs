@@ -6,7 +6,7 @@ use std::{
 
 use axum::{
     http::StatusCode,
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 
@@ -41,6 +41,7 @@ pub async fn run_server(opt: Opt, state: AppState) {
         .route("/api/songs", get(song::songs))
         .route("/api/songs/:id", get(song::api_song))
         .route("/api/songs/:id", patch(song::patch_song))
+        .route("/api/songs/:id", delete(song::delete_song))
         .route("/api/add_song", post(song::api_add_song))
         .route("/api/instruments", get(instrument::get_instruments))
         .nest_service("/static", ServeDir::new(opt.static_dir))
