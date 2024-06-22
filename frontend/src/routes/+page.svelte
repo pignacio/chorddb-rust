@@ -6,6 +6,7 @@
 	import { valibot } from 'sveltekit-superforms/adapters';
 	import BackspaceSvg from '$lib/svg/BackspaceSvg.svelte';
 	import MusicalNote from '$lib/svg/MusicalNote.svelte';
+	import { deleteSong } from '$lib/api/song';
 
 	export let data: PageData;
 	let submitFailed = false;
@@ -39,6 +40,17 @@
 			}
 		}
 	});
+
+	async function doDelete(id: string, author: string, title: string) {
+		if (!confirm(`Are you sure you want to delete ${author} - ${title}?`)) {
+			return;
+		}
+		const deleted = await deleteSong(fetch, id);
+
+		if (deleted) {
+			data.songs = data.songs.filter((song) => song.id !== id);
+		}
+	}
 </script>
 
 <h1>Songs</h1>
@@ -48,7 +60,7 @@
 		<li class="flex">
 			<MusicalNote class="size-6 mr-2" />
 			<a href="/songs/{id}">{author} - {title}</a>
-			<button type="button" on:click={() => alert('Hola')}>
+			<button type="button" on:click={() => doDelete(id, author, title)}>
 				<BackspaceSvg class="ml-2 size-6 stroke-red-500 hover:stroke-red-300" />
 			</button>
 		</li>

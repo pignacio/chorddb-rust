@@ -64,4 +64,9 @@ impl SeaOrmSongs {
             None => None,
         })
     }
+
+    pub async fn delete_song(&self, id: &Uuid) -> ChordDbResult<()> {
+        SongEntity::delete_by_id(*id).exec(&self.db).await?;
+        Ok(())
+    }
 }
