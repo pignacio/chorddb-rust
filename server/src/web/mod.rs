@@ -11,6 +11,7 @@ use axum::{
 };
 
 use tower::ServiceBuilder;
+use tower_cookies::{CookieManagerLayer, Cookies};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use crate::{
@@ -20,6 +21,7 @@ use crate::{
 };
 
 mod api;
+mod auth;
 mod chord;
 mod instrument;
 mod song;
@@ -37,6 +39,7 @@ async fn not_found() -> StatusCode {
 
 pub async fn run_server(opt: Opt, state: AppState) {
     let app = Router::new()
+        .route("/api/auth/user", get(auth::user_data))
         .route("/api/chords/:instrument/:chord", get(chord::chords))
         .route("/api/songs", get(song::songs))
         .route("/api/songs/:id", get(song::api_song))
@@ -47,6 +50,7 @@ pub async fn run_server(opt: Opt, state: AppState) {
         .nest_service("/static", ServeDir::new(opt.static_dir))
         .fallback(not_found)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
+        .layer(CookieManagerLayer::new())
         .with_state(state);
 
     let sock_addr = SocketAddr::from((
