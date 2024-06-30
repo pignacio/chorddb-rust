@@ -8,8 +8,10 @@ use serde::Serialize;
 pub enum ChordDbError {
     HttpNotFound,
     Database(DbErr),
+    SerdeJson(serde_json::Error),
     InvalidData(String),
     BadRequest(String),
+    Generic(Box<dyn Error>),
 }
 
 impl Display for ChordDbError {
@@ -19,6 +21,8 @@ impl Display for ChordDbError {
             ChordDbError::HttpNotFound => "HttpNotFound".to_string(),
             ChordDbError::InvalidData(msg) => format!("InvalidData: {}", msg),
             ChordDbError::BadRequest(msg) => format!("BadRequest: {}", msg),
+            ChordDbError::SerdeJson(e) => format!("serde_json error: {}", e),
+            ChordDbError::Generic(e) => format!("Generic error: {}", e),
         };
         f.write_fmt(format_args!("ChordDbError::{}", message))
     }
@@ -28,6 +32,8 @@ impl Error for ChordDbError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ChordDbError::Database(e) => Some(e),
+            ChordDbError::SerdeJson(e) => Some(e),
+            ChordDbError::Generic(e) => Some(e.as_ref()),
             _ => None,
         }
     }
@@ -36,6 +42,12 @@ impl Error for ChordDbError {
 impl From<DbErr> for ChordDbError {
     fn from(value: DbErr) -> Self {
         Self::Database(value)
+    }
+}
+
+impl From<serde_json::Error> for ChordDbError {
+    fn from(value: serde_json::Error) -> Self {
+        Self::SerdeJson(value)
     }
 }
 
