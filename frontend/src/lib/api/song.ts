@@ -8,7 +8,7 @@ export const SongDetailsSchema = v.object({
 	contents: v.string()
 });
 
-export type SongDetails = v.Output<typeof SongDetailsSchema>;
+export type SongDetails = v.InferOutput<typeof SongDetailsSchema>;
 
 export const SongHeaderSchema = v.object({
 	id: v.string(),
@@ -16,7 +16,7 @@ export const SongHeaderSchema = v.object({
 	title: v.string()
 });
 
-export type SongHeader = v.Output<typeof SongHeaderSchema>;
+export type SongHeader = v.InferOutput<typeof SongHeaderSchema>;
 
 export const SongSchema = v.object({
 	header: SongHeaderSchema,
@@ -36,7 +36,7 @@ export const SongSchema = v.object({
 	instrument: v.string()
 });
 
-export type Song = v.Output<typeof SongSchema>;
+export type Song = v.InferOutput<typeof SongSchema>;
 
 export type SongQuery = {
 	instrument?: string | null;

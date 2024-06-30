@@ -85,7 +85,7 @@ export async function redirectingApiCall<TSchema extends v.BaseSchema>(
 	fetch: FetchApi,
 	url: string,
 	schema: TSchema
-): Promise<v.Output<TSchema>> {
+): Promise<v.InferOutput<TSchema>> {
 	const result = await apiCall(fetch, url, schema);
 
 	return unpackOrRedirect(result);
@@ -113,7 +113,7 @@ export async function apiCall<TSchema extends v.BaseSchema>(
 	url: string,
 	schema: TSchema,
 	init?: RequestInit | undefined
-): Promise<FetchResult<v.Output<TSchema>>> {
+): Promise<FetchResult<v.InferOutput<TSchema>>> {
 	const response = await fetch(url, init);
 	if (response.ok) {
 		try {
