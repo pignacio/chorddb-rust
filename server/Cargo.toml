@@ -30,6 +30,7 @@ uuid = { version = "1.6.1", features = ["v4", "serde"] }
 dotenv = "0.15.0"
 dashmap = "5.5.3"
 strum = { version = "0.26.2", features = ["derive"] }
+jsonwebtoken-google = { path = "../jsonwebtoken-google" }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
