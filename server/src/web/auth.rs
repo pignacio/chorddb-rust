@@ -1,11 +1,25 @@
+use std::{collections::HashMap, sync::Mutex, time::Instant};
+
 use axum::{extract::Query, response::Redirect, Form, Json};
 use jsonwebtoken_google::Parser;
 use serde::{Deserialize, Serialize};
-use tower_cookies::{cookie::time::Duration, Cookie, Cookies};
+use tower_cookies::{
+    cookie::{time::Duration, SameSite},
+    Cookie, Cookies,
+};
+use tower_sessions::Session;
 
 use crate::error::{ChordDbError, ChordDbResult};
 
+struct PrivateUserData {
+    email: String,
+    expiration: Instant,
+}
+
+const SESSION_COOKIE: &str = "session";
+
 lazy_static! {
+    static ref SESSIONS: Mutex<HashMap<String, PrivateUserData>> = Mutex::new(HashMap::new());
     static ref GOOGLE_CLIENT_ID: String =
         std::env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID not set");
 }
@@ -36,7 +50,7 @@ impl UserData {
 
 pub fn get_user_data(cookies: &Cookies) -> UserData {
     cookies
-        .get("token")
+        .get(SESSION_COOKIE)
         .map(|token| UserData::user(token.value().to_string()))
         .unwrap_or(UserData::anonymous())
 }
@@ -58,6 +72,8 @@ pub struct LoginPayload {
     credential: String,
     select_by: Option<String>,
     state: Option<String>,
+    client_id: Option<String>,
+    clientId: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -74,11 +90,6 @@ pub async fn login(
     Form(payload): Form<LoginPayload>,
 ) -> ChordDbResult<Redirect> {
     let redirect_url = query_string.redirect.unwrap_or("/".to_string());
-    log::info!(
-        "Logging in with token. payload:{:?}, cookies:{:?}",
-        payload,
-        cookies
-    );
     let Some(crsf_cookie) = cookies.get("g_csrf_token") else {
         return Err(ChordDbError::BadRequest(
             "Missing g_csrf_token cookie".to_string(),
@@ -95,11 +106,11 @@ pub async fn login(
         .await
         .map_err(|e| ChordDbError::Generic(Box::new(e)))?;
 
-    log::info!("claims:{:?}", claims);
-
     cookies.add(
-        Cookie::build(Cookie::new("token", payload.g_csrf_token.clone()))
+        Cookie::build(Cookie::new(SESSION_COOKIE, payload.g_csrf_token.clone()))
             .path("/")
+            .same_site(SameSite::Strict)
+            .secure(true)
             .max_age(Duration::seconds(60 * 60 * 24))
             .build(),
     );

@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 
 export type FetchApi = (
 	input: URL | RequestInfo,
@@ -63,6 +63,8 @@ export function unpackOrRedirect<T>(result: FetchResult<T>): T {
 		return result.payload;
 	} else if (result.response.status == 404) {
 		error(404, { message: 'Not Found' });
+	} else if (result.response.status == 401) {
+		error(401, { message: 'Unauthorized' });
 	} else {
 		const message = `API call failed! statuscode=${result.response.status} when requesting "${result.response.url}". Error: ${result.message}`;
 		console.error(message, result);

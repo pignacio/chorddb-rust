@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import type { PageData } from './$types';
 
-	let data: PageData;
+	export let data: PageData;
 	let url = new URL('/api/auth/login', $page.url);
 	url.searchParams.append('redirect', $page.url.toString());
 </script>
@@ -18,6 +18,7 @@
 	data-client_id={data.googleClientId}
 	data-login_uri={url.toString()}
 	data-auto_prompt="false"
+	data-ux_mode="redirect"
 ></div>
 <div
 	class="g_id_signin w-64"

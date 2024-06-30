@@ -32,6 +32,8 @@ dashmap = "5.5.3"
 strum = { version = "0.26.2", features = ["derive"] }
 tower-cookies = "0.10.0"
 jsonwebtoken-google = { path = "../jsonwebtoken-google" }
+tower-sessions = "0.12.2"
+time = { version = "0.3.36", features = ["serde"] }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }

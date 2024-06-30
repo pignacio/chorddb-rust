@@ -1,6 +1,9 @@
 import type { PageServerLoad } from './$types';
 import { GOOGLE_CLIENT_ID } from '$env/static/private';
 import { redirect } from '@sveltejs/kit';
+import { dev } from '$app/environment';
+
+export const ssr = !dev;
 
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { currentUser } = await parent();

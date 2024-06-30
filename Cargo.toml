@@ -1,5 +1,6 @@
 [workspace]
-members = ["server","migration"]
+members = ["server", "migration"]
+default-members = ["server"]
 resolver = "2"
 
 [profile.release]
