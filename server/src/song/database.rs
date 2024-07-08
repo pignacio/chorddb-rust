@@ -41,6 +41,7 @@ impl SeaOrmSongs {
             author: song.author().to_string(),
             title: song.title().to_string(),
             tablature: song.contents,
+            owner: "8e4ca15e-42cf-4479-b45c-b2815c679cb2".to_string(),
         };
 
         SongEntity::insert(song::ActiveModel::from(model))
