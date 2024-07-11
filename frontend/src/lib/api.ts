@@ -64,9 +64,7 @@ export function unpackOrRedirect<T>(result: FetchResult<T>): T {
 	} else if (result.response.status == 404) {
 		error(404, { message: 'Not Found' });
 	} else {
-		const message = `API call failed! statuscode=${result.response.status} when requesting "${result.response.url}". Error: ${result.message}`;
-		console.error(message, result);
-		error(500, { message: message });
+		throw logError(result);
 	}
 }
 
@@ -74,11 +72,13 @@ export function unpackOrThrow<T>(result: FetchResult<T>): T {
 	if (result.success) {
 		return result.payload;
 	}
-	console.error('API CALL FAILED', {
-		url: result.response.url,
-		result: result
-	});
-	throw result;
+	throw logError(result);
+}
+
+function logError(result: FetchFailure): Error {
+	const message = `API call failed! statuscode=${result.response.status} when requesting "${result.response.url}". Error: ${result.message}`;
+	console.error(message, result);
+	return new Error(message);
 }
 
 export async function redirectingApiCall<TSchema extends v.BaseSchema>(
