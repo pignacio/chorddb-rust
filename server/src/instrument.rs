@@ -4,7 +4,7 @@ use dashmap::DashMap;
 use crate::chord::finder::{StringInstrument, GUITAR_STANDARD, MIMI};
 
 #[async_trait]
-pub trait Instruments {
+pub trait Instruments: Send + Sync {
     async fn get_instrument(&self, id: &str) -> Option<StringInstrument>;
 }
 

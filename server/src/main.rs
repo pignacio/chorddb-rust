@@ -3,7 +3,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use chorddb::instrument::MemoryInstruments;
+use chorddb::session::SeaOrmSessions;
 use chorddb::song::{CachedChords, FingeringCalculator, SeaOrmSongs};
+use chorddb::user::SeaOrmUsers;
 use chorddb::web::{run_server, AppState};
 use chorddb::Opt;
 use clap::Parser;
@@ -27,13 +29,13 @@ async fn main() {
 
     create_sqlite_db_if_missing(&url);
 
-    let songs = SeaOrmSongs::new(
-        Database::connect(&url)
-            .await
-            .unwrap_or_else(|err| panic!("Could not connect to the database @{}: {}", url, err)),
-    );
+    let db = Database::connect(&url)
+        .await
+        .unwrap_or_else(|err| panic!("Could not connect to the database @{}: {}", url, err));
     let state = AppState {
-        songs: Arc::new(songs),
+        songs: Arc::new(SeaOrmSongs::new(db.clone())),
+        users: Arc::new(SeaOrmUsers::new(db.clone())),
+        sessions: Arc::new(SeaOrmSessions::new(db.clone())),
         chords: Arc::new(CachedChords::new(FingeringCalculator {})),
         instruments: Arc::new(MemoryInstruments::new()),
     };

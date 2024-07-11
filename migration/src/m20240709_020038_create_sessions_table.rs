@@ -9,28 +9,27 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Song::Table)
-                    .col(string(Song::Id).primary_key())
-                    .col(string(Song::Author))
-                    .col(string(Song::Title))
-                    .col(string(Song::Tablature))
+                    .table(Session::Table)
+                    .col(string(Session::Id).primary_key())
+                    .col(string(Session::UserId))
+                    .col(date_time(Session::ExpiresAt))
                     .to_owned(),
             )
-            .await
+            .await?;
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Song::Table).to_owned())
+            .drop_table(Table::drop().table(Session::Table).to_owned())
             .await
     }
 }
 
 #[derive(DeriveIden)]
-enum Song {
+enum Session {
     Table,
     Id,
-    Author,
-    Title,
-    Tablature,
+    UserId,
+    ExpiresAt,
 }

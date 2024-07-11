@@ -178,7 +178,7 @@ impl SongRepository for FileSongs {
     }
 }
 
-pub trait ChordRepository {
+pub trait ChordRepository: Send + Sync {
     fn get_fingerings(&self, instrument: &StringInstrument, chord: &Chord) -> Vec<Fingering>;
 }
 
@@ -363,13 +363,13 @@ impl ChordRepository for PrecomputedChords {
 
 pub struct CachedChords {
     cache: DashMap<String, DashMap<Chord, Vec<Fingering>>>,
-    chords: Box<dyn ChordRepository + Send + Sync>,
+    chords: Box<dyn ChordRepository>,
 }
 
 impl CachedChords {
     pub fn new<C>(chords: C) -> Self
     where
-        C: ChordRepository + Send + Sync + 'static,
+        C: ChordRepository + 'static,
     {
         Self {
             cache: DashMap::new(),

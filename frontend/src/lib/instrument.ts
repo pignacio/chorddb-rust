@@ -7,7 +7,7 @@ export const InstrumentSchema = v.object({
 	description: v.string()
 });
 
-export type Instrument = v.Output<typeof InstrumentSchema>;
+export type Instrument = v.InferOutput<typeof InstrumentSchema>;
 
 export async function fetchInstruments(fetch: FetchApi): Promise<FetchResult<Instrument[]>> {
 	return await apiCall(fetch, '/api/instruments', v.array(InstrumentSchema));
