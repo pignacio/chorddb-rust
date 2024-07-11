@@ -9,7 +9,9 @@ pub mod entities;
 pub mod error;
 pub mod instrument;
 pub mod parser;
+pub mod session;
 pub mod song;
+pub mod user;
 pub mod web;
 
 // Setup the command line interface with clap.

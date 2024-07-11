@@ -11,12 +11,14 @@ use axum::{
 };
 
 use tower::ServiceBuilder;
-use tower_cookies::{CookieManagerLayer, Cookies};
+use tower_cookies::CookieManagerLayer;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use crate::{
     instrument::Instruments,
+    session::Sessions,
     song::{ChordRepository, SeaOrmSongs},
+    user::Users,
     Opt,
 };
 
@@ -29,8 +31,10 @@ mod song;
 #[derive(Clone)]
 pub struct AppState {
     pub songs: Arc<SeaOrmSongs>,
-    pub chords: Arc<dyn ChordRepository + Send + Sync>,
-    pub instruments: Arc<dyn Instruments + Send + Sync>,
+    pub users: Arc<dyn Users>,
+    pub sessions: Arc<dyn Sessions>,
+    pub chords: Arc<dyn ChordRepository>,
+    pub instruments: Arc<dyn Instruments>,
 }
 
 async fn not_found() -> StatusCode {
@@ -40,6 +44,7 @@ async fn not_found() -> StatusCode {
 pub async fn run_server(opt: Opt, state: AppState) {
     let app = Router::new()
         .route("/api/auth/user", get(auth::user_data))
+        .route("/api/auth/login", post(auth::login))
         .route("/api/chords/:instrument/:chord", get(chord::chords))
         .route("/api/songs", get(song::songs))
         .route("/api/songs/:id", get(song::api_song))

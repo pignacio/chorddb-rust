@@ -2,8 +2,7 @@ use sea_orm::{sea_query::OnConflict, DatabaseConnection, EntityTrait, Iterable};
 use uuid::Uuid;
 
 use crate::{
-    entities::prelude::Song as SongEntity,
-    entities::song,
+    entities::{prelude::Song as SongEntity, song},
     error::{ChordDbError, ChordDbResult},
 };
 
