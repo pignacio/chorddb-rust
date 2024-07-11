@@ -12,17 +12,34 @@ function kill_children() {
 
 cd $(dirname "$0")/..
 
-if [ "${1:-}" = "--watch" ]; then
-  echo "Enabling watch mode for cargo"
-  watch="true";
-else
-  watch=""
-fi
+watch=""
+bun_opts=""
+
+for opt in "$@"; do
+  case "${opt}" in
+    --watch)
+      echo "Enabling watch mode for cargo"
+      watch="true"
+      ;;
+    --open)
+      echo "Will use 0.0.0.0 instead of 127.0.0.1 for the frontend"
+      bun_opts="${bun_opts} --host 0.0.0.0"
+      ;;
+    -h|--help)
+      echo "Usage: $0 [--watch] [--open]"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $opt"
+      exit 1
+      ;;
+  esac
+done
 
 echo "Starting frontend application"
 pushd frontend
 bun install
-bun run dev &
+bun run dev ${bun_opts} &
 frontend_pid=$!
 trap "trap - SIGTERM && kill_children ${frontend_pid}" SIGINT SIGTERM EXIT
 popd
