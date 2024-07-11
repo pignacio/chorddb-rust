@@ -120,6 +120,7 @@ pub(super) async fn login(
             .same_site(SameSite::Strict)
             .path("/")
             .secure(true)
+            .http_only(true)
             .into(),
     );
 
