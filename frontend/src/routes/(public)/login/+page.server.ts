@@ -3,6 +3,7 @@ import { message, superValidate } from 'sveltekit-superforms';
 import { valibot } from 'sveltekit-superforms/adapters';
 import * as v from 'valibot';
 import type { PageServerLoad, Actions } from './$types';
+import { GOOGLE_CLIENT_ID } from '$env/static/private';
 import { login } from '$lib/api/auth';
 
 const schema = v.object({
@@ -13,7 +14,7 @@ const schema = v.object({
 export const load: PageServerLoad = async () => {
 	const form = await superValidate(valibot(schema));
 
-	return { form };
+	return { form, googleClientId: GOOGLE_CLIENT_ID };
 };
 
 export const actions = {

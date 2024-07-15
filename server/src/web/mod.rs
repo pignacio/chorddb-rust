@@ -45,6 +45,7 @@ pub async fn run_server(opt: Opt, state: AppState) {
     let app = Router::new()
         .route("/api/auth/user", get(auth::user_data))
         .route("/api/auth/login", post(auth::login))
+        .route("/api/auth/login/google", post(auth::login_google))
         .route("/api/chords/:instrument/:chord", get(chord::chords))
         .route("/api/songs", get(song::songs))
         .route("/api/songs/:id", get(song::api_song))

@@ -1,6 +1,11 @@
-use axum::{extract::State, Json};
+use axum::{
+    extract::{Query, State},
+    response::Redirect,
+    Form, Json,
+};
 use axum_macros::debug_handler;
 use chrono::Utc;
+use jsonwebtoken_google::Parser;
 use serde::{Deserialize, Serialize};
 use tower_cookies::{
     cookie::{time::Duration, SameSite},
@@ -11,12 +16,12 @@ use uuid::Uuid;
 use crate::{
     error::{ChordDbError, ChordDbResult},
     session::{Session, Sessions},
-    user::Users,
+    user::{User, Users},
 };
 
-use super::AppState;
+use super::{api::ApiResult, AppState};
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserData {
     pub logged_in: bool,
@@ -41,6 +46,10 @@ impl UserData {
 }
 
 const SESSION_COOKIE_NAME: &str = "session_chorddb";
+
+lazy_static! {
+    static ref GOOGLE_CLIENT_ID: Option<String> = dotenv::var("GOOGLE_CLIENT_ID").ok();
+}
 
 pub async fn get_user_data(
     cookies: &Cookies,
@@ -104,7 +113,16 @@ pub(super) async fn login(
     if !verify_password(&payload.password, &user.password) {
         return Err(ChordDbError::BadRequest("Invalid password".to_string()));
     }
+    initialize_session(&user, sessions.as_ref(), &cookies).await?;
 
+    Ok(Json(UserData::user(payload.user)))
+}
+
+async fn initialize_session(
+    user: &User,
+    sessions: &dyn Sessions,
+    cookies: &Cookies,
+) -> ChordDbResult<()> {
     let session = Uuid::new_v4().to_string();
     sessions
         .upsert_session(Session {
@@ -124,9 +142,85 @@ pub(super) async fn login(
             .into(),
     );
 
-    Ok(Json(UserData::user(payload.user)))
+    Ok(())
 }
 
 fn verify_password(submitted: &str, database: &str) -> bool {
     submitted == database
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(dead_code)]
+#[allow(non_snake_case)]
+pub struct GoogleLoginPayload {
+    // token: String,
+    g_csrf_token: String,
+    credential: String,
+    select_by: Option<String>,
+    state: Option<String>,
+    client_id: Option<String>,
+    clientId: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LoginQueryString {
+    redirect: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenClaims {
+    pub email: String,
+    pub aud: String,
+    pub iss: String,
+    pub exp: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GoogleLoginResult {
+    user: UserData,
+}
+
+#[debug_handler]
+pub async fn login_google(
+    State(AppState { users, .. }): State<AppState>,
+    Query(query): Query<LoginQueryString>,
+    cookies: Cookies,
+    Form(payload): Form<GoogleLoginPayload>,
+) -> ChordDbResult<Redirect> {
+    let Some(client_id) = GOOGLE_CLIENT_ID.as_ref() else {
+        return Err(ChordDbError::BadRequest(
+            "Google Sign In is not supported".to_string(),
+        ));
+    };
+    let Some(crsf_cookie) = cookies.get("g_csrf_token") else {
+        return Err(ChordDbError::BadRequest(
+            "Missing g_csrf_token cookie".to_string(),
+        ));
+    };
+    if crsf_cookie.value() != payload.g_csrf_token {
+        return Err(ChordDbError::BadRequest(
+            "Failed to verify double submit cookie".to_string(),
+        ));
+    }
+    let parser = Parser::new(client_id);
+    let decoded = parser.parse::<TokenClaims>(&payload.credential).await;
+    let claims = match decoded {
+        Ok(claims) => claims,
+        Err(e) => {
+            log::warn!("Failed to parse token: {}", e);
+            return Err(ChordDbError::BadRequest("Invalid token".to_string()));
+        }
+    };
+
+    // TODO: check expiration
+
+    if users.get_user(&claims.email).await?.is_none() {
+        return Err(ChordDbError::BadRequest(format!(
+            "User {} not found",
+            claims.email
+        )));
+    };
+
+    Ok(Redirect::to(&query.redirect.unwrap_or("/".to_string())))
 }
