@@ -1,0 +1,11 @@
+FROM rust:1.79
+
+WORKDIR /app
+
+COPY target/release/chorddb ./
+COPY target/release/migration ./
+COPY migrate_and_run.sh ./
+
+EXPOSE 8080
+
+CMD ["./migrate_and_run.sh"]
