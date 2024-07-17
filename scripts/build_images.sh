@@ -3,7 +3,7 @@ set -e
 set -u
 
 git_hash=$(git rev-parse --short HEAD)
-git_tag=$(git describe --tags --abbrev=0 2>/dev/null || true)
+git_tag=$(git describe --tags --exact-match --abbrev=0 2>/dev/null || true)
 
 
 echo "Building images with hash $git_hash"
