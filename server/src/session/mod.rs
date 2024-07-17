@@ -9,6 +9,7 @@ pub use crate::entities::session::{Entity as SessionEntity, Model as Session};
 pub trait Sessions: Send + Sync {
     async fn get_session(&self, session_id: &str) -> ChordDbResult<Option<Session>>;
     async fn upsert_session(&self, session: Session) -> ChordDbResult<()>;
+    async fn delete_session(&self, session_id: &str) -> ChordDbResult<bool>;
 }
 
 pub struct SeaOrmSessions {
@@ -38,5 +39,13 @@ impl Sessions for SeaOrmSessions {
             .exec(&self.db)
             .await?;
         Ok(())
+    }
+
+    async fn delete_session(&self, session_id: &str) -> ChordDbResult<bool> {
+        let delete_result = SessionEntity::delete_by_id(session_id)
+            .exec(&self.db)
+            .await?;
+
+        Ok(delete_result.rows_affected > 0)
     }
 }

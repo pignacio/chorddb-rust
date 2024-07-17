@@ -46,6 +46,7 @@ impl Users for SeaOrmUsers {
             name: model.name,
             email: model.email,
             password: model.password,
+            is_admin: model.is_admin,
         }))
     }
 }

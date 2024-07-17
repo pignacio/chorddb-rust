@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use axum::{
     extract::{Path, Query, State},
     response::IntoResponse,
-    Json,
+    Extension, Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -13,15 +13,10 @@ use crate::{
     error::{ChordDbError, ChordDbResult},
     parser::{parse_tablature, Comp, Line, LineBit},
     song::{SeaOrmSongs, Song, SongHeader},
+    user::User,
 };
 
 use super::{api::SimpleApiResult, AppState};
-
-#[derive(Debug, PartialEq, Eq, Serialize)]
-struct ChordModel {
-    chord: String,
-    fingering: String,
-}
 
 #[derive(Debug, PartialEq, Eq, Serialize)]
 struct LineBitModel {
@@ -40,11 +35,12 @@ pub struct AddSong {
 }
 
 pub async fn add_song(
-    State(AppState { songs, .. }): State<AppState>,
+    AppState { songs, .. }: &AppState,
+    user: &User,
     payload: AddSong,
 ) -> ChordDbResult<Uuid> {
     let id = Uuid::new_v4();
-    let song = Song::new(id, payload.author, payload.title, payload.contents);
+    let song = Song::new(id, payload.author, payload.title, payload.contents, user);
 
     songs.upsert_song(song).await?;
 
@@ -58,10 +54,11 @@ pub struct AddSongResult {
 }
 
 pub async fn api_add_song(
-    state: State<AppState>,
+    State(state): State<AppState>,
+    Extension(user): Extension<User>,
     Json(payload): Json<AddSong>,
 ) -> ChordDbResult<Json<AddSongResult>> {
-    add_song(state, payload)
+    add_song(&state, &user, payload)
         .await
         .map(|id| AddSongResult { success: true, id })
         .map(Json)
@@ -137,8 +134,16 @@ fn serialize_bit(bit: &LineBit) -> LineBitModel {
 
 pub async fn songs(
     State(AppState { songs, .. }): State<AppState>,
-) -> ChordDbResult<impl IntoResponse> {
-    Ok(Json(songs.all_songs().await?))
+    Extension(user): Extension<User>,
+) -> ChordDbResult<Json<Vec<SongHeader>>> {
+    Ok(Json(
+        songs
+            .all_songs()
+            .await?
+            .into_iter()
+            .filter(|s| user_can_access(&user, s))
+            .collect(),
+    ))
 }
 
 #[derive(Serialize)]
@@ -170,6 +175,7 @@ pub struct SongQueryString {
 pub async fn api_song(
     Path(id): Path<String>,
     Query(query_string): Query<SongQueryString>,
+    Extension(user): Extension<User>,
     State(AppState {
         songs,
         chords,
@@ -177,12 +183,7 @@ pub async fn api_song(
         ..
     }): State<AppState>,
 ) -> ChordDbResult<impl IntoResponse> {
-    let Some(song_id) = Uuid::parse_str(&id).ok() else {
-        return Err(ChordDbError::HttpNotFound);
-    };
-    let Some(song) = songs.get_song(&song_id).await? else {
-        return Err(ChordDbError::HttpNotFound);
-    };
+    let song = load_song(&id, &user, &songs).await?;
 
     let instrument = if let Some(instrument_id) = query_string.instrument {
         instruments
@@ -230,22 +231,26 @@ impl SongDetails {
     }
 }
 
-async fn load_song(id: &str, songs: &SeaOrmSongs) -> ChordDbResult<Song> {
+async fn load_song(id: &str, user: &User, songs: &SeaOrmSongs) -> ChordDbResult<Song> {
     let Some(uuid) = Uuid::parse_str(id).ok() else {
         return Err(ChordDbError::HttpNotFound);
     };
     let Some(song) = songs.get_song(&uuid).await? else {
         return Err(ChordDbError::HttpNotFound);
     };
+    if !user_can_access(user, &song.header) {
+        return Err(ChordDbError::Forbidden);
+    }
 
     Ok(song)
 }
 
 pub async fn delete_song(
     State(AppState { songs, .. }): State<AppState>,
+    Extension(user): Extension<User>,
     Path(id): Path<String>,
 ) -> ChordDbResult<Json<SimpleApiResult>> {
-    let song = load_song(&id, &songs).await?;
+    let song = load_song(&id, &user, &songs).await?;
 
     songs.delete_song(song.id()).await?;
 
@@ -254,10 +259,11 @@ pub async fn delete_song(
 
 pub async fn patch_song(
     State(AppState { songs, .. }): State<AppState>,
+    Extension(user): Extension<User>,
     Path(id): Path<String>,
     Json(payload): Json<SongDetails>,
 ) -> ChordDbResult<Json<SimpleApiResult>> {
-    let mut song = load_song(&id, &songs).await?;
+    let mut song = load_song(&id, &user, &songs).await?;
     if payload.is_empty() {
         return Err(ChordDbError::BadRequest(
             "All song fields where empty".to_string(),
@@ -277,4 +283,8 @@ pub async fn patch_song(
     songs.upsert_song(song).await?;
 
     Ok(Json(SimpleApiResult::simple_success("Patch successful")))
+}
+
+fn user_can_access(user: &User, song: &SongHeader) -> bool {
+    user.id == song.owner_id || user.is_admin
 }

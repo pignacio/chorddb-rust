@@ -3,7 +3,6 @@ use axum::{
     response::Redirect,
     Form, Json,
 };
-use axum_macros::debug_handler;
 use chrono::Utc;
 use jsonwebtoken_google::Parser;
 use serde::{Deserialize, Serialize};
@@ -19,7 +18,7 @@ use crate::{
     user::{User, Users},
 };
 
-use super::{api::ApiResult, AppState};
+use super::AppState;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,16 +55,17 @@ pub async fn get_user_data(
     users: &dyn Users,
     sessions: &dyn Sessions,
 ) -> ChordDbResult<UserData> {
-    Ok(maybe_user_data(cookies, users, sessions)
+    Ok(get_authenticated_user(cookies, users, sessions)
         .await?
+        .map(|user| UserData::user(user.email))
         .unwrap_or_else(UserData::anonymous))
 }
 
-pub async fn maybe_user_data(
+pub async fn get_authenticated_user(
     cookies: &Cookies,
     users: &dyn Users,
     sessions: &dyn Sessions,
-) -> ChordDbResult<Option<UserData>> {
+) -> ChordDbResult<Option<User>> {
     let Some(cookie) = cookies.get(SESSION_COOKIE_NAME) else {
         log::debug!("no cookie");
         return Ok(None);
@@ -74,14 +74,14 @@ pub async fn maybe_user_data(
         log::debug!("no session for cookie {:?}", cookie);
         return Ok(None);
     };
-    let Some(user) = users.get_user(&session.user_id).await? else {
+    let user = users.get_user(&session.user_id).await?;
+    if user.is_none() {
         log::debug!("no user for id {}", session.user_id);
         return Ok(None);
     };
-    Ok(Some(UserData::user(user.email)))
+    Ok(user)
 }
 
-#[debug_handler]
 pub(super) async fn user_data(
     State(AppState {
         users, sessions, ..
@@ -149,6 +149,18 @@ fn verify_password(submitted: &str, database: &str) -> bool {
     submitted == database
 }
 
+pub(super) async fn logout(
+    State(AppState { sessions, .. }): State<AppState>,
+    cookies: Cookies,
+) -> ChordDbResult<Redirect> {
+    let Some(cookie) = cookies.get(SESSION_COOKIE_NAME) else {
+        return Ok(Redirect::to("/"));
+    };
+    sessions.delete_session(cookie.value()).await?;
+    cookies.remove(Cookie::new(SESSION_COOKIE_NAME, ""));
+    Ok(Redirect::to("/"))
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[allow(dead_code)]
@@ -181,9 +193,10 @@ pub struct GoogleLoginResult {
     user: UserData,
 }
 
-#[debug_handler]
 pub async fn login_google(
-    State(AppState { users, .. }): State<AppState>,
+    State(AppState {
+        users, sessions, ..
+    }): State<AppState>,
     Query(query): Query<LoginQueryString>,
     cookies: Cookies,
     Form(payload): Form<GoogleLoginPayload>,
@@ -215,12 +228,14 @@ pub async fn login_google(
 
     // TODO: check expiration
 
-    if users.get_user(&claims.email).await?.is_none() {
+    let Some(user) = users.get_user(&claims.email).await? else {
         return Err(ChordDbError::BadRequest(format!(
             "User {} not found",
             claims.email
         )));
     };
+
+    initialize_session(&user, sessions.as_ref(), &cookies).await?;
 
     Ok(Redirect::to(&query.redirect.unwrap_or("/".to_string())))
 }

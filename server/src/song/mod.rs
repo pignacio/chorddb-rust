@@ -10,9 +10,12 @@ use sea_orm::Iterable;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::chord::{
-    finder::{find_fingerings, Fingering, StringInstrument},
-    Chord, Key, Variant,
+use crate::{
+    chord::{
+        finder::{find_fingerings, Fingering, StringInstrument},
+        Chord, Key, Variant,
+    },
+    user::User,
 };
 
 mod database;
@@ -24,6 +27,7 @@ pub struct SongHeader {
     pub id: Uuid,
     pub author: String,
     pub title: String,
+    pub owner_id: Uuid,
 }
 
 impl SongHeader {
@@ -32,11 +36,11 @@ impl SongHeader {
     }
 
     pub fn author(&self) -> &str {
-        self.author.as_ref()
+        &self.author
     }
 
     pub fn title(&self) -> &str {
-        self.title.as_ref()
+        &self.title
     }
 }
 
@@ -47,9 +51,14 @@ pub struct Song {
 }
 
 impl Song {
-    pub fn new(id: Uuid, author: String, title: String, contents: String) -> Self {
+    pub fn new(id: Uuid, author: String, title: String, contents: String, owner: &User) -> Self {
         Song {
-            header: SongHeader { id, author, title },
+            header: SongHeader {
+                id,
+                author,
+                title,
+                owner_id: owner.id,
+            },
             contents,
         }
     }
@@ -64,6 +73,10 @@ impl Song {
 
     pub fn title(&self) -> &str {
         return self.header.title();
+    }
+
+    pub fn owner_id(&self) -> &Uuid {
+        &self.header.owner_id
     }
 
     pub fn header(&self) -> &SongHeader {

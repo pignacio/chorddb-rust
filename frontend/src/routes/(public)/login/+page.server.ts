@@ -3,7 +3,7 @@ import { message, superValidate } from 'sveltekit-superforms';
 import { valibot } from 'sveltekit-superforms/adapters';
 import * as v from 'valibot';
 import type { PageServerLoad, Actions } from './$types';
-import { GOOGLE_CLIENT_ID } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { login } from '$lib/api/auth';
 
 const schema = v.object({
@@ -11,10 +11,18 @@ const schema = v.object({
 	password: v.pipe(v.string(), v.nonEmpty())
 });
 
-export const load: PageServerLoad = async () => {
+export const ssr = false;
+
+export const load: PageServerLoad = async ({ parent, url }) => {
+	const { currentUser } = await parent();
+	if (currentUser.loggedIn) {
+		const redirectUrl = url.searchParams.get('redirect') ?? '/';
+		redirect(302, redirectUrl);
+	}
+
 	const form = await superValidate(valibot(schema));
 
-	return { form, googleClientId: GOOGLE_CLIENT_ID };
+	return { form, googleClientId: env.GOOGLE_CLIENT_ID };
 };
 
 export const actions = {
