@@ -7,12 +7,13 @@ mod database;
 
 pub use database::SeaOrmUsers;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct User {
     pub id: Uuid,
     pub name: String,
     pub email: String,
     pub password: String,
+    pub is_admin: bool,
 }
 
 #[async_trait]

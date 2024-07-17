@@ -17,11 +17,16 @@ fn build_header(model: &song::Model) -> ChordDbResult<SongHeader> {
         .map_err(|err| {
             ChordDbError::InvalidData(format!("Invalid uuid: '{}'. Err: {}", model.id, err))
         })
-        .map(|id| SongHeader {
-            id,
-            author: model.author.clone(),
-            title: model.title.clone(),
-        })
+        .map(|id| {
+            Ok(SongHeader {
+                id,
+                author: model.author.clone(),
+                title: model.title.clone(),
+                owner_id: Uuid::parse_str(&model.owner).map_err(|err| {
+                    ChordDbError::InvalidData(format!("Invalid uuid: '{}'. Err: {}", model.id, err))
+                })?,
+            })
+        })?
 }
 
 impl SeaOrmSongs {
@@ -39,8 +44,8 @@ impl SeaOrmSongs {
             id: song.id().to_string(),
             author: song.author().to_string(),
             title: song.title().to_string(),
+            owner: song.owner_id().to_string(),
             tablature: song.contents,
-            owner: "8e4ca15e-42cf-4479-b45c-b2815c679cb2".to_string(),
         };
 
         SongEntity::insert(song::ActiveModel::from(model))

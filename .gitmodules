@@ -1,0 +1,3 @@
+[submodule "jsonwebtoken-google"]
+	path = jsonwebtoken-google
+	url = git@github.com:avkviring/jsonwebtoken-google

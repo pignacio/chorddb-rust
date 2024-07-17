@@ -10,6 +10,8 @@ pub enum ChordDbError {
     Database(DbErr),
     InvalidData(String),
     BadRequest(String),
+    Forbidden,
+    Generic(Box<dyn Error>),
 }
 
 impl Display for ChordDbError {
@@ -19,6 +21,8 @@ impl Display for ChordDbError {
             ChordDbError::HttpNotFound => "HttpNotFound".to_string(),
             ChordDbError::InvalidData(msg) => format!("InvalidData: {}", msg),
             ChordDbError::BadRequest(msg) => format!("BadRequest: {}", msg),
+            ChordDbError::Forbidden => "Forbidden".to_string(),
+            ChordDbError::Generic(e) => format!("Generic: {}", e),
         };
         f.write_fmt(format_args!("ChordDbError::{}", message))
     }
@@ -28,6 +32,7 @@ impl Error for ChordDbError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ChordDbError::Database(e) => Some(e),
+            ChordDbError::Generic(e) => Some(e.as_ref()),
             _ => None,
         }
     }
@@ -63,6 +68,7 @@ impl IntoResponse for ChordDbError {
             ChordDbError::BadRequest(message) => {
                 (StatusCode::BAD_REQUEST, Json(SimpleError::new(message))).into_response()
             }
+            ChordDbError::Forbidden => (StatusCode::FORBIDDEN, "Forbidden").into_response(),
             _ => {
                 log::warn!("Request failed! {}", self);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong :(").into_response()
